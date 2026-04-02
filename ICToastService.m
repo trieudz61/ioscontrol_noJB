@@ -1,12 +1,14 @@
-// ICToastService.m — Hidden UIApplication for global toast overlay
-// Mirrors XXTUIService.app architecture: always-running hidden UIApp
-// Daemon posix_spawns this at startup → it listens for Darwin notifications
-// and creates UIWindow at windowLevel=20000099.9 to overlay on ALL apps.
-// SBAppTags:hidden prevents user from seeing/killing it via app switcher.
-
+// ICToastService.m — Global toast overlay service
+// Pure CFRunLoop daemon (UIApplicationMain hangs for spawned processes)
+// Creates UIWindow overlay without UIApplicationMain by bootstrapping
+// UIApplication singleton directly
 #import <CoreFoundation/CoreFoundation.h>
+#import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <dlfcn.h>
+#import <objc/runtime.h>
 
+// ─── File-based logging ───────────────────────────────────────────────────
 static void ictlog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1, 2);
 static void ictlog(NSString *fmt, ...) {
   va_list args;
@@ -14,7 +16,6 @@ static void ictlog(NSString *fmt, ...) {
   NSString *msg = [[NSString alloc] initWithFormat:fmt arguments:args];
   va_end(args);
   NSLog(@"🍞 ICToastService: %@", msg);
-  // Write to file for debugging (readable from iPhone console)
   NSString *log = [NSString stringWithFormat:@"%@: %@\n", [NSDate date], msg];
   NSFileHandle *fh =
       [NSFileHandle fileHandleForWritingAtPath:@"/tmp/ictoast_log.txt"];
@@ -30,42 +31,35 @@ static void ictlog(NSString *fmt, ...) {
   [fh closeFile];
 }
 
-// ─── IPC constants (same as daemon) ───────────────────────────────────────
+// ─── IPC constants ────────────────────────────────────────────────────────
 static NSString *const kICToastTextFile = @"/tmp/ioscontrol_toast_text.txt";
 static CFStringRef kICNotifShowToast = CFSTR("com.ioscontrol.showToast");
 
-// Keep a strong reference to current toast window so ARC doesn't release it
+// ─── Toast display via UIWindow (created without UIApplicationMain) ───────
 static UIWindow *gCurrentToastWindow = nil;
 
-// ─── Toast display ────────────────────────────────────────────────────────
-
 static void showToast(NSString *text) {
-  // Dismiss previous toast immediately
+  ictlog(@"showToast: %@", text);
+
+  // Dismiss previous
   if (gCurrentToastWindow) {
     gCurrentToastWindow.hidden = YES;
     gCurrentToastWindow = nil;
   }
 
-  ictlog(@"showToast: %@", text);
   CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
   CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
+  ictlog(@"screen: %gx%g", screenW, screenH);
 
-  // ── Create UIWindow at XXTouch's window level ──
+  // Create window
   UIWindow *toastWindow =
       [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-  // iOS 13: assign windowScene so UIKit can render
-  if (@available(iOS 13.0, *)) {
-    id scene =
-        UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-    if (scene)
-      [toastWindow setValue:scene forKey:@"windowScene"];
-  }
   toastWindow.windowLevel = 20000099.9;
   toastWindow.backgroundColor = [UIColor clearColor];
   toastWindow.userInteractionEnabled = NO;
-  toastWindow.hidden = NO;
+  toastWindow.rootViewController = [UIViewController new];
 
-  // ── Pill label ──
+  // Pill label
   CGFloat maxW = screenW - 60;
   UILabel *label = [[UILabel alloc] init];
   label.text = text;
@@ -79,55 +73,33 @@ static void showToast(NSString *text) {
   label.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.15].CGColor;
   label.layer.borderWidth = 0.5;
 
-  // Size to fit content
   CGSize sz = [label sizeThatFits:CGSizeMake(maxW - 32, 200)];
   sz.width = MIN(sz.width + 40, maxW);
   sz.height = MAX(sz.height + 20, 40);
 
-  // Position: bottom of screen above home indicator
   CGFloat x = (screenW - sz.width) / 2.0;
   CGFloat y = screenH - sz.height - 120;
   label.frame = CGRectMake(0, 0, sz.width, sz.height);
   toastWindow.frame = CGRectMake(x, y, sz.width, sz.height);
 
   [toastWindow addSubview:label];
+  [toastWindow makeKeyAndVisible];
   gCurrentToastWindow = toastWindow;
+  ictlog(@"window created and makeKeyAndVisible");
 
-  // ── Animate in ──
-  toastWindow.alpha = 0.0;
-  toastWindow.transform = CGAffineTransformMakeScale(0.85, 0.85);
-  [UIView animateWithDuration:0.2
-      delay:0
-      usingSpringWithDamping:0.7
-      initialSpringVelocity:0.5
-      options:UIViewAnimationOptionCurveEaseOut
-      animations:^{
-        toastWindow.alpha = 1.0;
-        toastWindow.transform = CGAffineTransformIdentity;
-      }
-      completion:^(BOOL done) {
-        // Auto-dismiss after 2s
-        dispatch_after(
-            dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
-            dispatch_get_main_queue(), ^{
-              [UIView animateWithDuration:0.25
-                  animations:^{
-                    toastWindow.alpha = 0.0;
-                    toastWindow.transform =
-                        CGAffineTransformMakeScale(0.9, 0.9);
-                  }
-                  completion:^(BOOL d) {
-                    toastWindow.hidden = YES;
-                    if (gCurrentToastWindow == toastWindow) {
-                      gCurrentToastWindow = nil;
-                    }
-                  }];
-            });
-      }];
+  // Auto-dismiss after 2s
+  dispatch_after(
+      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+      dispatch_get_main_queue(), ^{
+        toastWindow.hidden = YES;
+        if (gCurrentToastWindow == toastWindow) {
+          gCurrentToastWindow = nil;
+        }
+        ictlog(@"toast dismissed");
+      });
 }
 
 // ─── Darwin notification callback ─────────────────────────────────────────
-
 static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
                                       CFNotificationName n, const void *obj,
                                       CFDictionaryRef info) {
@@ -136,88 +108,81 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
                                              encoding:NSUTF8StringEncoding
                                                 error:&err];
   if (!text || err) {
-    NSLog(@"🍞 ICToastService: failed to read toast text: %@", err);
+    ictlog(@"failed to read toast text: %@", err);
     return;
   }
   [[NSFileManager defaultManager] removeItemAtPath:kICToastTextFile error:nil];
 
+  NSString *toastText = [text copy];
   dispatch_async(dispatch_get_main_queue(), ^{
-    showToast(text);
+    showToast(toastText);
   });
 }
 
-// ─── AppDelegate ──────────────────────────────────────────────────────────
+// ─── Bootstrap UIApplication without UIApplicationMain ────────────────────
+// UIApplicationMain hangs for posix_spawned processes because RunningBoard
+// doesn't know about them. But we can create a UIApplication singleton
+// directly and create UIWindows on it.
 
-@interface ICToastAppDelegate : UIResponder <UIApplicationDelegate>
-@property(nonatomic, strong) UIWindow *window;
-@end
+static void bootstrapUIKit(void) {
+  ictlog(@"bootstrapping UIKit...");
 
-@implementation ICToastAppDelegate
-
-- (BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-
-  ictlog(@"started (PID=%d, bundle=%@)", getpid(),
-         [[NSBundle mainBundle] bundleIdentifier]);
-
-  // Register Darwin notification listener
-  CFNotificationCenterAddObserver(
-      CFNotificationCenterGetDarwinNotifyCenter(), (__bridge void *)self,
-      toastNotificationCallback, kICNotifShowToast, NULL,
-      CFNotificationSuspensionBehaviorDeliverImmediately);
-
-  ictlog(@"listener registered for com.ioscontrol.showToast");
-
-  // Minimal transparent window (iOS 13+: needs windowScene)
-  self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
-  if (@available(iOS 13.0, *)) {
-    id scene =
-        UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-    if (scene)
-      [self.window setValue:scene forKey:@"windowScene"];
+  // UIApplicationInstantiateSingleton is a private function in UIKitCore
+  // It creates UIApplication.sharedApplication without the full
+  // UIApplicationMain dance (no RunningBoard registration)
+  typedef void (*InstantiateSingletonFunc)(Class);
+  void *uikitHandle =
+      dlopen("/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore",
+             RTLD_LAZY);
+  if (!uikitHandle) {
+    // Try public framework path
+    uikitHandle =
+        dlopen("/System/Library/Frameworks/UIKit.framework/UIKit", RTLD_LAZY);
   }
-  self.window.windowLevel = UIWindowLevelNormal - 1;
-  self.window.backgroundColor = [UIColor clearColor];
-  self.window.rootViewController = [UIViewController new];
-  self.window.hidden = YES;
 
-  ictlog(@"window set up OK");
-  return YES;
+  if (uikitHandle) {
+    InstantiateSingletonFunc instantiate = (InstantiateSingletonFunc)dlsym(
+        uikitHandle, "UIApplicationInstantiateSingleton");
+    if (instantiate) {
+      instantiate([UIApplication class]);
+      ictlog(@"UIApplicationInstantiateSingleton OK, shared=%@",
+             [UIApplication sharedApplication]);
+    } else {
+      ictlog(
+          @"UIApplicationInstantiateSingleton not found, trying manual init");
+      // Fallback: create UIApplication manually
+      [UIApplication sharedApplication];
+    }
+  } else {
+    ictlog(@"failed to dlopen UIKitCore");
+  }
+
+  // Initialize UIScreen (needed for UIWindow creation)
+  UIScreen *screen = [UIScreen mainScreen];
+  ictlog(@"UIScreen: %@, bounds=%@", screen, NSStringFromCGRect(screen.bounds));
 }
-
-// Keep running forever — never suspend
-- (void)applicationDidEnterBackground:(UIApplication *)application {
-  // Do nothing — stay alive
-}
-
-@end
 
 // ─── main ─────────────────────────────────────────────────────────────────
-
 int main(int argc, char *argv[]) {
   @autoreleasepool {
-    // Write BEFORE UIApplicationMain — this tells us if binary starts at all
-    NSString *earlyLog =
-        [NSString stringWithFormat:@"[%@] main() entered, PID=%d, about to "
-                                   @"call UIApplicationMain...\n",
-                                   [NSDate date], getpid()];
-    [earlyLog writeToFile:@"/tmp/ictoast_log.txt"
-               atomically:YES
-                 encoding:NSUTF8StringEncoding
-                    error:nil];
+    // Write early log
+    ictlog(@"main() entered (PID=%d)", getpid());
 
-    int ret = UIApplicationMain(argc, argv, nil,
-                                NSStringFromClass([ICToastAppDelegate class]));
+    // Bootstrap UIKit without UIApplicationMain
+    bootstrapUIKit();
 
-    // If we get here, UIApplicationMain returned (shouldn't happen normally)
-    NSString *exitLog =
-        [NSString stringWithFormat:@"[%@] UIApplicationMain returned: %d\n",
-                                   [NSDate date], ret];
-    NSFileHandle *fh =
-        [NSFileHandle fileHandleForWritingAtPath:@"/tmp/ictoast_log.txt"];
-    [fh seekToEndOfFile];
-    [fh writeData:[exitLog dataUsingEncoding:NSUTF8StringEncoding]];
-    [fh closeFile];
-    return ret;
+    // Register Darwin notification listener
+    CFNotificationCenterAddObserver(
+        CFNotificationCenterGetDarwinNotifyCenter(), NULL,
+        toastNotificationCallback, kICNotifShowToast, NULL,
+        CFNotificationSuspensionBehaviorDeliverImmediately);
+    ictlog(@"Darwin listener registered");
+
+    // Run main run loop forever
+    ictlog(@"entering CFRunLoop...");
+    CFRunLoopRun();
+
+    ictlog(@"CFRunLoop exited (unexpected)");
+    return 0;
   }
 }
