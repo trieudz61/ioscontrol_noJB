@@ -42,21 +42,18 @@
         <div class="drawer-subtitle" id="drawer-version">v0.5.0</div>
       </div>
       <div class="drawer-list">
+        <a class="drawer-item" data-tab="script">
+          <i class="material-icons">edit_note</i>
+          <span>Script Editor</span>
+        </a>
         <a class="drawer-item active" data-tab="screen">
           <i class="material-icons">cast</i>
           <span>Live Screen</span>
         </a>
-        <a class="drawer-item" data-tab="script">
-          <i class="material-icons">code</i>
-          <span>Script Editor</span>
-        </a>
+
         <a class="drawer-item" data-tab="log">
           <i class="material-icons">receipt_long</i>
           <span>Device Log</span>
-        </a>
-        <a class="drawer-item" data-tab="files">
-          <i class="material-icons">folder_open</i>
-          <span>Files</span>
         </a>
         <div class="drawer-divider"></div>
         <a class="drawer-item" data-tab="settings">
@@ -70,25 +67,26 @@
         <div class="drawer-divider"></div>
         <!-- Phase 9 Tools -->
         <div style="padding:4px 16px 2px;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#555;font-weight:600">Tools</div>
-        <a class="drawer-item" href="/static/script_edit.html" target="_blank">
-          <i class="material-icons">edit_note</i>
-          <span>Script Editor</span>
-        </a>
-        <a class="drawer-item" href="/static/picker.html" target="_blank">
+
+        <a class="drawer-item" data-tab="picker">
           <i class="material-icons">colorize</i>
           <span>Color Picker</span>
         </a>
-        <a class="drawer-item" href="/static/matrix_dict.html" target="_blank">
-          <i class="material-icons">grid_on</i>
-          <span>Matrix Dict</span>
-        </a>
-        <a class="drawer-item" href="/static/applist.html" target="_blank">
+        <a class="drawer-item" data-tab="applist">
           <i class="material-icons">apps</i>
           <span>App List</span>
         </a>
-        <a class="drawer-item" href="/static/xxtouch_service.html" target="_blank">
+        <a class="drawer-item" data-tab="devcontrol">
           <i class="material-icons">manage_accounts</i>
           <span>Device Control</span>
+        </a>
+        <a class="drawer-item" data-tab="apidocs">
+          <i class="material-icons">menu_book</i>
+          <span>API Docs</span>
+        </a>
+        <a class="drawer-item" data-tab="tplmaker">
+          <i class="material-icons">crop</i>
+          <span>Template Maker</span>
         </a>
         <div class="drawer-divider"></div>
         <a class="drawer-item" id="btn-kill-daemon">
@@ -137,19 +135,6 @@
           </button>
         </div>
 
-        <!-- Script tab toolbar actions -->
-        <div class="toolbar-actions hidden" id="script-actions">
-          <button class="toolbar-btn" id="btn-save" title="Save (Ctrl+S)">
-            <i class="material-icons">save</i>
-          </button>
-          <button class="toolbar-btn" id="btn-undo" title="Undo">
-            <i class="material-icons">undo</i>
-          </button>
-          <button class="toolbar-btn" id="btn-redo" title="Redo">
-            <i class="material-icons">redo</i>
-          </button>
-        </div>
-
         <!-- Log tab toolbar actions -->
         <div class="toolbar-actions hidden" id="log-actions">
           <button class="toolbar-btn" id="btn-pause-log" title="Pause">
@@ -194,68 +179,9 @@
         </div>
       </div>
 
-      <!-- ═══ Tab: Script ═══ -->
+      <!-- ═══ Tab: Script (iframe) ═══ -->
       <div class="tab-content" id="tab-script">
-        <div class="editor-container">
-          <div class="editor-toolbar">
-            <div class="editor-file-info">
-              <i class="material-icons">description</i>
-              <span class="editor-filename">untitled.lua</span>
-              <span class="editor-badge">Phase 5</span>
-            </div>
-            <div class="editor-actions">
-              <button
-                class="editor-btn"
-                id="btn-editor-run"
-                title="Run Script (Ctrl+Enter)"
-              >
-                <i class="material-icons" style="color: #4caf50">play_arrow</i>
-              </button>
-              <button
-                class="editor-btn"
-                id="btn-editor-stop"
-                title="Stop Script"
-              >
-                <i class="material-icons" style="color: #ef5350">stop</i>
-              </button>
-            </div>
-          </div>
-          <div class="editor-main">
-            <textarea
-              id="script-editor"
-              spellcheck="false"
-              placeholder="-- IOSControl Lua Script Editor (Phase 5)
--- Ctrl+Enter to run, Stop to interrupt
-
--- Available API:
--- sys.log(msg)         -- log to daemon
--- sys.msleep(ms)       -- sleep milliseconds
--- touch.tap(x, y)      -- tap at coordinate
--- touch.swipe(x1,y1,x2,y2,dur) -- swipe
--- screen.get_color(x, y)  -- returns '#RRGGBB'
--- screen.get_size()    -- returns width, height
-
--- Example:
-for i = 1, 3 do
-  touch.tap(200, 400)
-  sys.msleep(500)
-  sys.log('tap ' .. i)
-end
-"
-            ></textarea>
-          </div>
-          <div class="editor-resize-handle" id="editor-resize-handle"></div>
-          <div class="editor-output">
-            <div class="editor-output-header">
-              <span>Output</span>
-            </div>
-            <textarea
-              id="script-output"
-              readonly
-              placeholder="Script output will appear here…"
-            ></textarea>
-          </div>
-        </div>
+        <iframe id="script-iframe" src="/static/script_edit.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
       </div>
 
       <!-- ═══ Tab: Log ═══ -->
@@ -283,20 +209,29 @@ end
         </div>
       </div>
 
-      <!-- ═══ Tab: Files ═══ -->
-      <div class="tab-content" id="tab-files">
-        <div class="placeholder-container">
-          <i class="material-icons placeholder-icon">folder_open</i>
-          <h2>File Manager</h2>
-          <p>
-            File browsing, upload, download, and script management will be
-            available in a future update.
-          </p>
-          <div class="placeholder-badge">
-            <i class="material-icons" style="font-size: 14px">schedule</i>
-            Coming Soon
-          </div>
-        </div>
+      <!-- ═══ Tab: Color Picker ═══ -->
+      <div class="tab-content" id="tab-picker">
+        <iframe data-src="/static/picker.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+      </div>
+
+      <!-- ═══ Tab: App List ═══ -->
+      <div class="tab-content" id="tab-applist">
+        <iframe data-src="/static/applist.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+      </div>
+
+      <!-- ═══ Tab: Device Control ═══ -->
+      <div class="tab-content" id="tab-devcontrol">
+        <iframe data-src="/static/xxtouch_service.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+      </div>
+
+      <!-- ═══ Tab: API Docs ═══ -->
+      <div class="tab-content" id="tab-apidocs">
+        <iframe data-src="/static/api_docs.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+      </div>
+
+      <!-- ═══ Tab: Template Maker ═══ -->
+      <div class="tab-content" id="tab-tplmaker">
+        <iframe data-src="/static/template_maker.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
       </div>
 
       <!-- ═══ Tab: Settings ═══ -->

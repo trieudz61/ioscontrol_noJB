@@ -130,7 +130,7 @@ function renderList(apps) {
       const bid = btn.dataset.bid;
       const action = btn.dataset.action;
       if (action === 'copy') {
-        navigator.clipboard.writeText(bid).catch(()=>{});
+        try{var ta=document.createElement('textarea');ta.value=bid;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}catch(e){}
         showToast(`Copied: ${bid}`);
       } else if (action === 'launch') {
         showToast(`🚀 Launching ${bid}…`);

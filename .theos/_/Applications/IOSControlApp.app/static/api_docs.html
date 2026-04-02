@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>IOSControl — API Reference</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <style>
+    :root {
+      --bg-body: #0c0c14;
+      --bg-card: #13131f;
+      --bg-card-hover: #191930;
+      --bg-sidebar: #0f0f1a;
+      --bg-code: #0a0a12;
+      --border: rgba(255,255,255,0.06);
+      --border-accent: rgba(108,99,255,0.3);
+      --text-primary: #e8e8f0;
+      --text-secondary: #8888a0;
+      --text-muted: #55556a;
+      --accent: #6C63FF;
+      --accent-dim: rgba(108,99,255,0.15);
+      --green: #4caf50;
+      --orange: #ff9800;
+      --red: #ef5350;
+      --cyan: #56c8d8;
+      --yellow: #fdd835;
+      --pink: #f06292;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', -apple-system, sans-serif;
+      --mono: 'JetBrains Mono', 'SF Mono', monospace;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-body);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ══ Layout ══ */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 260px; min-width: 260px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border);
+      position: sticky; top: 0; height: 100vh;
+      overflow-y: auto; z-index: 10;
+      display: flex; flex-direction: column;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    .main { flex: 1; padding: 32px 40px 80px; max-width: 920px; }
+
+    /* ══ Sidebar Header ══ */
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(108,99,255,0.08), transparent);
+    }
+    .sidebar-header h1 {
+      font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sidebar-header h1 .material-icons { font-size: 22px; color: var(--accent); }
+    .sidebar-header p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+    /* ══ Search ══ */
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-box input {
+      width: 100%; padding: 8px 12px 8px 32px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text-primary);
+      font-size: 13px; font-family: var(--font);
+      outline: none; transition: border-color 0.2s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-box { position: relative; }
+    .search-box .material-icons {
+      position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+      font-size: 16px; color: var(--text-muted); pointer-events: none;
+    }
+
+    /* ══ Sidebar Nav ══ */
+    .sidebar-nav { flex: 1; padding: 8px 0; }
+    .nav-section {
+      padding: 16px 16px 4px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--text-muted); font-weight: 600;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 20px; cursor: pointer;
+      font-size: 13px; color: var(--text-secondary);
+      transition: all 0.15s; border-left: 3px solid transparent;
+    }
+    .nav-item:hover { color: var(--text-primary); background: rgba(255,255,255,0.03); }
+    .nav-item.active {
+      color: var(--accent); background: var(--accent-dim);
+      border-left-color: var(--accent); font-weight: 500;
+    }
+    .nav-item .badge {
+      margin-left: auto; font-size: 10px; padding: 1px 6px;
+      border-radius: 10px; background: rgba(255,255,255,0.06);
+      color: var(--text-muted); font-weight: 500;
+    }
+    .nav-item .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ══ Main Header ══ */
+    .page-header { margin-bottom: 36px; }
+    .page-header h1 {
+      font-size: 28px; font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .page-header p { color: var(--text-secondary); font-size: 14px; margin-top: 6px; }
+
+    /* ══ Module Section ══ */
+    .module-section { margin-bottom: 48px; scroll-margin-top: 24px; }
+    .module-title {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 20px; font-weight: 700; margin-bottom: 8px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    }
+    .module-title .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .module-desc { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+
+    /* ══ Function Card ══ */
+    .fn-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .fn-card:hover { border-color: var(--border-accent); }
+    .fn-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .fn-sig {
+      font-family: var(--mono); font-size: 14px; font-weight: 500;
+    }
+    .fn-sig .fn-name { color: var(--accent); }
+    .fn-sig .fn-module { color: var(--cyan); }
+    .fn-sig .fn-params { color: var(--text-secondary); }
+    .fn-sig .fn-optional { color: var(--text-muted); font-style: italic; }
+    .fn-ret-badge {
+      font-size: 10px; padding: 2px 8px; border-radius: 10px;
+      background: rgba(76,175,80,0.12); color: var(--green);
+      font-family: var(--mono); white-space: nowrap;
+    }
+    .fn-card-body { padding: 16px 18px; }
+    .fn-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+
+    /* Params table */
+    .params-table {
+      width: 100%; border-collapse: collapse; margin-bottom: 14px;
+      font-size: 12px;
+    }
+    .params-table th {
+      text-align: left; padding: 6px 10px;
+      color: var(--text-muted); font-weight: 500; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .params-table td {
+      padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03);
+      vertical-align: top;
+    }
+    .params-table .p-name { font-family: var(--mono); color: var(--orange); font-size: 12px; }
+    .params-table .p-type { font-family: var(--mono); color: var(--pink); font-size: 11px; }
+    .params-table .p-desc { color: var(--text-secondary); }
+    .params-table .p-opt { font-size: 10px; color: var(--text-muted); font-style: italic; }
+
+    /* Code block */
+    .code-block {
+      position: relative; background: var(--bg-code);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .code-block-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+      font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .code-block-header .copy-btn {
+      display: flex; align-items: center; gap: 4px; cursor: pointer;
+      background: none; border: none; color: var(--text-muted);
+      font-size: 11px; font-family: var(--font); padding: 2px 6px;
+      border-radius: 4px; transition: all 0.15s;
+    }
+    .code-block-header .copy-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+    .code-block-header .copy-btn .material-icons { font-size: 14px; }
+    .code-block pre {
+      padding: 14px 16px; overflow-x: auto;
+      font-family: var(--mono); font-size: 12.5px; line-height: 1.65;
+      color: var(--text-primary); tab-size: 2;
+    }
+    .code-block pre .cm { color: var(--text-muted); }
+    .code-block pre .str { color: var(--green); }
+    .code-block pre .kw { color: var(--pink); }
+    .code-block pre .fn { color: var(--cyan); }
+    .code-block pre .num { color: var(--orange); }
+
+    /* ══ Back link ══ */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--text-muted); margin-bottom: 16px;
+    }
+    .back-link .material-icons { font-size: 16px; }
+    .back-link:hover { color: var(--accent); text-decoration: none; }
+
+    /* ══ Mobile Toggle ══ */
+    .mobile-toggle {
+      display: none; position: fixed; bottom: 20px; right: 20px; z-index: 100;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--accent); border: none; color: #fff;
+      box-shadow: 0 4px 16px rgba(108,99,255,0.4); cursor: pointer;
+    }
+    .mobile-toggle .material-icons { font-size: 24px; }
+
+    /* ══ Responsive ══ */
+    @media (max-width: 860px) {
+      .sidebar {
+        position: fixed; left: -280px; width: 280px; min-width: 280px;
+        transition: left 0.3s ease; z-index: 200;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+      }
+      .sidebar.open { left: 0; }
+      .main { padding: 20px 16px 80px; }
+      .mobile-toggle { display: flex; align-items: center; justify-content: center; }
+      .page-header h1 { font-size: 22px; }
+    }
+
+    /* Toast notification for copy */
+    .copy-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      padding: 10px 24px; background: var(--accent); color: #fff;
+      border-radius: 24px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+      transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0;
+      z-index: 1000; pointer-events: none;
+    }
+    .copy-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* No results */
+    .no-results {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .no-results .material-icons { font-size: 48px; margin-bottom: 12px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <!-- ══ Sidebar ══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1><i class="material-icons">menu_book</i> API Reference</h1>
+        <p>IOSControl Lua API v0.7.0 — 46 functions</p>
+      </div>
+      <div class="search-box">
+        <i class="material-icons">search</i>
+        <input type="text" id="search-input" placeholder="Search functions…" autocomplete="off" />
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Generated by JS -->
+      </nav>
+    </aside>
+
+    <!-- ══ Main Content ══ -->
+    <main class="main" id="main-content">
+      <a class="back-link" href="/static/index.html">
+        <i class="material-icons">arrow_back</i> Back to Web IDE
+      </a>
+      <div class="page-header">
+        <h1>Lua API Reference</h1>
+        <p>Complete documentation for IOSControl automation scripting. All functions are available globally in Lua scripts.</p>
+      </div>
+      <div id="api-content">
+        <!-- Generated by JS -->
+      </div>
+      <div class="no-results" id="no-results" style="display:none">
+        <i class="material-icons">search_off</i>
+        <p>No matching functions found.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile sidebar toggle -->
+  <button class="mobile-toggle" id="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+    <i class="material-icons">menu_book</i>
+  </button>
+
+  <!-- Copy toast -->
+  <div class="copy-toast" id="copy-toast">Copied to clipboard ✓</div>
+
+<script>
+// ══════════════════════════════════════════
+// API Data — 44 functions across 11 modules
+// ══════════════════════════════════════════
+const API = [
+  {
+    module: 'sys', color: '#6C63FF',
+    desc: 'System utilities — logging, sleep, time, device buttons, UI dialogs.',
+    fns: [
+      {
+        name: 'log', sig: 'sys.log(message)', ret: 'void',
+        desc: 'Write a message to the daemon log. Also outputs to Web IDE console. <code>print()</code> is an alias.',
+        params: [{ name: 'message', type: 'string', desc: 'Text to log' }],
+        example: `sys.log("Hello from Lua!")
+sys.log("Screen size: " .. screen.get_size())`
+      },
+      {
+        name: 'toast', sig: 'sys.toast(message)', ret: 'void',
+        desc: 'Show a global toast notification overlay on the device screen. Uses IPC to display via ICToastService.',
+        params: [{ name: 'message', type: 'string', desc: 'Toast text' }],
+        example: `sys.toast("Script started ✅")
+-- Toast appears as a banner over any app`
+      },
+      {
+        name: 'alert', sig: 'sys.alert(message [, title])', ret: 'void',
+        desc: 'Show a modal alert dialog. Blocks Lua execution until "OK" is tapped. Timeout: 60 seconds.',
+        params: [
+          { name: 'message', type: 'string', desc: 'Alert body text' },
+          { name: 'title', type: 'string', desc: 'Dialog title', opt: true, def: '"IOSControl"' },
+        ],
+        example: `sys.alert("Task completed!", "Done")
+-- Script pauses here until user taps OK
+sys.log("User dismissed alert")`
+      },
+      {
+        name: 'msleep', sig: 'sys.msleep(ms)', ret: 'void',
+        desc: 'Sleep (pause script) for specified milliseconds.',
+        params: [{ name: 'ms', type: 'integer', desc: 'Milliseconds to sleep' }],
+        example: `sys.msleep(500)  -- Wait 500ms
+sys.msleep(1000) -- Wait 1 second`
+      },
+      {
+        name: 'sleep', sig: 'sys.sleep(seconds)', ret: 'void',
+        desc: 'Sleep for specified seconds (supports decimal).',
+        params: [{ name: 'seconds', type: 'number', desc: 'Seconds to sleep' }],
+        example: `sys.sleep(1)    -- Wait 1 second
+sys.sleep(0.5)  -- Wait 500ms
+sys.sleep(2.5)  -- Wait 2.5 seconds`
+      },
+      {
+        name: 'time', sig: 'sys.time()', ret: 'number',
+        desc: 'Get current Unix timestamp (seconds since epoch, with decimals).',
+        params: [],
+        example: `local t = sys.time()
+sys.log("Timestamp: " .. t)
+-- Output: Timestamp: 1743609600.123`
+      },
+      {
+        name: 'date', sig: 'sys.date([format])', ret: 'string',
+        desc: 'Get formatted date string. Supports strftime-style tokens: %Y, %m, %d, %H, %M, %S.',
+        params: [
+          { name: 'format', type: 'string', desc: 'Date format string', opt: true, def: '"%Y-%m-%d %H:%M:%S"' },
+        ],
+        example: `local now = sys.date()
+sys.log(now)  -- "2026-04-02 19:30:00"
+
+local dateOnly = sys.date("%Y-%m-%d")
+sys.log(dateOnly)  -- "2026-04-02"`
+      },
+      {
+        name: 'getenv', sig: 'sys.getenv(key)', ret: 'string | nil',
+        desc: 'Read an environment variable. Returns nil if not set.',
+        params: [{ name: 'key', type: 'string', desc: 'Environment variable name' }],
+        example: `local home = sys.getenv("HOME")
+sys.log("Home: " .. (home or "nil"))`
+      },
+      {
+        name: 'home', sig: 'sys.home()', ret: 'void',
+        desc: 'Press the Home button. Equivalent to pressing the physical Home button on iPhone 8 or the virtual home gesture.',
+        params: [],
+        example: `-- Go to home screen
+sys.home()
+sys.msleep(500)
+sys.log("Now on home screen")`
+      },
+      {
+        name: 'lock', sig: 'sys.lock()', ret: 'void',
+        desc: 'Press the Lock/Sleep button. Locks the device screen.',
+        params: [],
+        example: `-- Lock the device
+sys.lock()
+sys.msleep(3000)
+-- Wake up by pressing home
+sys.home()`
+      },
+    ]
+  },
+  {
+    module: 'touch', color: '#4caf50',
+    desc: 'Touch simulation — tap, swipe, long press, and raw multi-touch events via HID injection.',
+    fns: [
+      {
+        name: 'tap', sig: 'touch.tap(x, y)', ret: 'void',
+        desc: 'Tap at screen coordinates. Uses a 80ms down+up duration like a natural tap.',
+        params: [
+          { name: 'x', type: 'number', desc: 'X coordinate (points)' },
+          { name: 'y', type: 'number', desc: 'Y coordinate (points)' },
+        ],
+        example: `-- Tap center of iPhone 8 screen (375x667)
+touch.tap(187, 333)
+
+-- Tap a list of coordinates
+local points = {{100, 200}, {150, 300}, {200, 400}}
+for _, p in ipairs(points) do
+    touch.tap(p[1], p[2])
+    sys.msleep(300)
+end`
+      },
+      {
+        name: 'swipe', sig: 'touch.swipe(x1, y1, x2, y2 [, duration])', ret: 'void',
+        desc: 'Swipe from (x1,y1) to (x2,y2). Smooth interpolation at ~30fps. Runs asynchronously.',
+        params: [
+          { name: 'x1', type: 'number', desc: 'Start X' },
+          { name: 'y1', type: 'number', desc: 'Start Y' },
+          { name: 'x2', type: 'number', desc: 'End X' },
+          { name: 'y2', type: 'number', desc: 'End Y' },
+          { name: 'duration', type: 'number', desc: 'Duration in seconds', opt: true, def: '0.3' },
+        ],
+        example: `-- Swipe up (scroll down)
+touch.swipe(187, 500, 187, 200, 0.4)
+
+-- Swipe right (go back)
+touch.swipe(20, 400, 350, 400, 0.3)
+
+-- Slow swipe for precise scrolling
+touch.swipe(187, 400, 187, 300, 1.0)`
+      },
+      {
+        name: 'long_press', sig: 'touch.long_press(x, y [, duration])', ret: 'void',
+        desc: 'Long press at coordinates. Useful for context menus. Runs asynchronously.',
+        params: [
+          { name: 'x', type: 'number', desc: 'X coordinate' },
+          { name: 'y', type: 'number', desc: 'Y coordinate' },
+          { name: 'duration', type: 'number', desc: 'Hold duration in seconds', opt: true, def: '1.0' },
+        ],
+        example: `-- Long press to open context menu
+touch.long_press(200, 400, 1.5)
+sys.msleep(500)
+-- Then tap a menu option
+touch.tap(200, 450)`
+      },
+      {
+        name: 'down', sig: 'touch.down(x, y [, finger])', ret: 'void',
+        desc: 'Begin a touch (finger down). Use with move/up for custom gestures.',
+        params: [
+          { name: 'x', type: 'number', desc: 'X coordinate' },
+          { name: 'y', type: 'number', desc: 'Y coordinate' },
+          { name: 'finger', type: 'integer', desc: 'Finger index (0-based)', opt: true, def: '0' },
+        ],
+        example: `-- Custom drag gesture
+touch.down(100, 300)
+sys.msleep(50)
+for i = 1, 10 do
+    touch.move(100 + i*20, 300, 0)
+    sys.msleep(16)
+end
+touch.up(300, 300)`
+      },
+      {
+        name: 'move', sig: 'touch.move(x, y [, finger])', ret: 'void',
+        desc: 'Move an active touch to new coordinates. Must be preceded by touch.down().',
+        params: [
+          { name: 'x', type: 'number', desc: 'New X coordinate' },
+          { name: 'y', type: 'number', desc: 'New Y coordinate' },
+          { name: 'finger', type: 'integer', desc: 'Finger index', opt: true, def: '0' },
+        ],
+        example: `-- Draw a circle gesture
+touch.down(200, 300)
+for angle = 0, 360, 10 do
+    local rad = math.rad(angle)
+    local x = 200 + 50 * math.cos(rad)
+    local y = 300 + 50 * math.sin(rad)
+    touch.move(x, y)
+    sys.msleep(16)
+end
+touch.up(200, 300)`
+      },
+      {
+        name: 'up', sig: 'touch.up(x, y [, finger])', ret: 'void',
+        desc: 'End a touch (finger up). Must match a previous touch.down().',
+        params: [
+          { name: 'x', type: 'number', desc: 'X coordinate' },
+          { name: 'y', type: 'number', desc: 'Y coordinate' },
+          { name: 'finger', type: 'integer', desc: 'Finger index', opt: true, def: '0' },
+        ],
+        example: `touch.down(100, 200)
+sys.msleep(100)
+touch.up(100, 200)
+-- Same as touch.tap(100, 200) but with manual timing`
+      },
+    ]
+  },
+  {
+    module: 'screen', color: '#56c8d8',
+    desc: 'Screen capture, color sampling, OCR, and pixel-level color search.',
+    fns: [
+      {
+        name: 'get_size', sig: 'screen.get_size()', ret: 'width, height',
+        desc: 'Get screen dimensions in points. Returns two values.',
+        params: [],
+        example: `local w, h = screen.get_size()
+sys.log("Screen: " .. w .. "×" .. h)
+-- iPhone 8: 375×667
+-- Center tap:
+touch.tap(w/2, h/2)`
+      },
+      {
+        name: 'get_color', sig: 'screen.get_color(x, y)', ret: 'string | nil',
+        desc: 'Get pixel color at coordinates. Returns hex string "#RRGGBB" or nil on failure.',
+        params: [
+          { name: 'x', type: 'integer', desc: 'X pixel coordinate' },
+          { name: 'y', type: 'integer', desc: 'Y pixel coordinate' },
+        ],
+        example: `local color = screen.get_color(100, 200)
+sys.log("Color: " .. (color or "nil"))
+-- Output: Color: #FF5722
+
+-- Wait for a specific color (e.g., loading done)
+while screen.get_color(200, 100) ~= "#FFFFFF" do
+    sys.msleep(200)
+end
+sys.log("Page loaded!")`
+      },
+      {
+        name: 'capture', sig: 'screen.capture()', ret: 'boolean, number|string',
+        desc: 'Trigger a screen capture. Returns success boolean and JPEG byte count (or error string).',
+        params: [],
+        example: `local ok, size = screen.capture()
+if ok then
+    sys.log("Captured: " .. size .. " bytes")
+else
+    sys.log("Capture failed: " .. tostring(size))
+end`
+      },
+      {
+        name: 'ocr', sig: 'screen.ocr()', ret: 'table | nil',
+        desc: 'Perform OCR on current screen using Apple Vision. Returns array of recognized text strings.',
+        params: [],
+        example: `local texts = screen.ocr()
+if texts then
+    for i, t in ipairs(texts) do
+        sys.log(i .. ": " .. t)
+    end
+else
+    sys.log("OCR failed")
+end
+
+-- Search for specific text on screen
+local texts = screen.ocr()
+for _, t in ipairs(texts or {}) do
+    if t:find("Settings") then
+        sys.log("Found Settings!")
+        break
+    end
+end`
+      },
+      {
+        name: 'find_color', sig: 'screen.find_color(r, g, b [, tolerance])', ret: 'x, y | nil',
+        desc: 'Find first pixel matching RGB color (Chebyshev distance). Returns coordinates or nil.',
+        params: [
+          { name: 'r', type: 'integer', desc: 'Red (0-255)' },
+          { name: 'g', type: 'integer', desc: 'Green (0-255)' },
+          { name: 'b', type: 'integer', desc: 'Blue (0-255)' },
+          { name: 'tolerance', type: 'integer', desc: 'Max distance per channel', opt: true, def: '10' },
+        ],
+        example: `-- Find a red button
+local x, y = screen.find_color(255, 59, 48, 20)
+if x then
+    sys.log("Found red at: " .. x .. ", " .. y)
+    touch.tap(x, y)
+else
+    sys.log("Red button not found")
+end`
+      },
+      {
+        name: 'find_multi_color', sig: 'screen.find_multi_color(r, g, b [, tolerance [, max]])', ret: 'table',
+        desc: 'Find all pixels matching RGB color. Returns array of {x, y} tables.',
+        params: [
+          { name: 'r', type: 'integer', desc: 'Red (0-255)' },
+          { name: 'g', type: 'integer', desc: 'Green (0-255)' },
+          { name: 'b', type: 'integer', desc: 'Blue (0-255)' },
+          { name: 'tolerance', type: 'integer', desc: 'Max distance per channel', opt: true, def: '10' },
+          { name: 'max', type: 'integer', desc: 'Maximum matches to return', opt: true, def: '100' },
+        ],
+        example: `-- Find all green dots
+local pts = screen.find_multi_color(76, 175, 80, 15, 50)
+sys.log("Found " .. #pts .. " green pixels")
+for _, p in ipairs(pts) do
+    sys.log("  (" .. p.x .. ", " .. p.y .. ")")
+end`
+      },
+      {
+        name: 'find_text', sig: 'screen.find_text(target)', ret: 'x, y | nil',
+        desc: 'Find text on screen using OCR (Apple Vision). Case-insensitive partial match. Returns center coordinates of the matched text region, or nil if not found.',
+        params: [
+          { name: 'target', type: 'string', desc: 'Text to search for' },
+        ],
+        example: `-- Find and tap "Settings" on screen
+local x, y = screen.find_text("Settings")
+if x then
+    sys.log("Found at: " .. x .. ", " .. y)
+    touch.tap(x, y)
+else
+    sys.log("Text not found")
+end
+
+-- Wait until text appears
+local x, y
+repeat
+    x, y = screen.find_text("Done")
+    sys.msleep(500)
+until x
+touch.tap(x, y)`
+      },
+      {
+        name: 'find_image', sig: 'screen.find_image(path [, threshold])', ret: 'x, y | nil',
+        desc: 'Find a template image on screen using pixel-by-pixel template matching (SAD algorithm). Supports PNG and JPEG templates. Returns center coordinates of the best match, or nil if similarity is below threshold.',
+        params: [
+          { name: 'path', type: 'string', desc: 'Absolute path to template image file (PNG/JPEG)' },
+          { name: 'threshold', type: 'number', desc: 'Match similarity threshold (0.0-1.0)', opt: true, def: '0.8' },
+        ],
+        example: `-- Find and tap a button screenshot
+local x, y = screen.find_image("/var/mobile/templates/buy_btn.png")
+if x then
+    sys.log("Found button at: " .. x .. ", " .. y)
+    touch.tap(x, y)
+else
+    sys.log("Button not found")
+end
+
+-- Use stricter matching
+local x, y = screen.find_image("/var/mobile/templates/icon.png", 0.95)
+if x then
+    touch.tap(x, y)
+end`
+      },
+    ]
+  },
+  {
+    module: 'app', color: '#ff9800',
+    desc: 'App lifecycle management — launch, kill, query running state, and list installed apps.',
+    fns: [
+      {
+        name: 'launch', sig: 'app.launch(bundleID)', ret: 'boolean',
+        desc: 'Launch an app by its bundle identifier.',
+        params: [{ name: 'bundleID', type: 'string', desc: 'App bundle ID' }],
+        example: `-- Open Safari
+app.launch("com.apple.mobilesafari")
+sys.msleep(1000)
+sys.log("Safari opened!")`
+      },
+      {
+        name: 'kill', sig: 'app.kill(bundleID)', ret: 'boolean',
+        desc: 'Force-kill a running app.',
+        params: [{ name: 'bundleID', type: 'string', desc: 'App bundle ID' }],
+        example: `-- Close Settings app
+app.kill("com.apple.Preferences")
+sys.msleep(500)
+sys.log("Settings closed")`
+      },
+      {
+        name: 'is_running', sig: 'app.is_running(bundleID)', ret: 'boolean',
+        desc: 'Check if an app is currently running.',
+        params: [{ name: 'bundleID', type: 'string', desc: 'App bundle ID' }],
+        example: `if app.is_running("com.apple.mobilesafari") then
+    sys.log("Safari is running")
+else
+    sys.log("Safari is not running")
+    app.launch("com.apple.mobilesafari")
+end`
+      },
+      {
+        name: 'frontmost', sig: 'app.frontmost()', ret: 'string | nil',
+        desc: 'Get bundle ID of the currently active (foreground) app.',
+        params: [],
+        example: `local bid = app.frontmost()
+sys.log("Active app: " .. (bid or "none"))
+-- Output: Active app: com.apple.springboard`
+      },
+      {
+        name: 'list', sig: 'app.list()', ret: 'table',
+        desc: 'List all installed apps. Each entry has bundleID, name, and version fields.',
+        params: [],
+        example: `local apps = app.list()
+sys.log("Installed: " .. #apps .. " apps")
+for _, a in ipairs(apps) do
+    sys.log(a.name .. " (" .. a.bundleID .. ") v" .. a.version)
+end`
+      },
+    ]
+  },
+  {
+    module: 'key', color: '#f06292',
+    desc: 'HID keyboard input — press named keys, type text, and hold/release modifiers.',
+    fns: [
+      {
+        name: 'press', sig: 'key.press(name)', ret: 'void',
+        desc: 'Press and release a named key. Supports: letters (a-z), digits (0-9), RETURN, BACKSPACE, SPACE, ESCAPE, TAB, arrows, F1-F12, modifiers (LSHIFT, LCTRL, CMD), media (VOLUMEUP/DOWN, MUTE, PLAYPAUSE), and system (HOMEBUTTON, LOCK, SCREENSAVE, SPOTLIGHT).',
+        params: [{ name: 'name', type: 'string', desc: 'Key name (case-sensitive)' }],
+        example: `-- Press Enter
+key.press("RETURN")
+
+-- Press Home button
+key.press("HOMEBUTTON")
+
+-- Type letters one by one
+key.press("h")
+key.press("i")
+
+-- Volume control
+key.press("VOLUMEUP")
+key.press("VOLUMEDOWN")`
+      },
+      {
+        name: 'down', sig: 'key.down(name)', ret: 'void',
+        desc: 'Hold a key down (without release). Pair with key.up() for modifier combos.',
+        params: [{ name: 'name', type: 'string', desc: 'Key name' }],
+        example: `-- Cmd+A (Select All)
+key.down("CMD")
+key.press("a")
+key.up("CMD")
+
+-- Cmd+C (Copy)
+key.down("CMD")
+key.press("c")
+key.up("CMD")`
+      },
+      {
+        name: 'up', sig: 'key.up(name)', ret: 'void',
+        desc: 'Release a held key. Must match a previous key.down() call.',
+        params: [{ name: 'name', type: 'string', desc: 'Key name' }],
+        example: `-- Hold Shift + press A = uppercase "A"
+key.down("LSHIFT")
+key.press("a")
+key.up("LSHIFT")`
+      },
+      {
+        name: 'input_text', sig: 'key.input_text(text)', ret: 'void',
+        desc: 'Type a text string. ASCII characters are sent as HID keystrokes. Unicode (e.g., Vietnamese) automatically uses clipboard paste via IPC.',
+        params: [{ name: 'text', type: 'string', desc: 'Text to type' }],
+        example: `-- Type ASCII text
+key.input_text("Hello World!")
+
+-- Type Unicode (Vietnamese)
+key.input_text("Xin chào Việt Nam! 🇻🇳")
+-- Automatically uses clipboard paste for non-ASCII`
+      },
+    ]
+  },
+  {
+    module: 'clipboard', color: '#fdd835',
+    desc: 'System clipboard (UIPasteboard) read and write access.',
+    fns: [
+      {
+        name: 'read', sig: 'clipboard.read()', ret: 'string',
+        desc: 'Read current clipboard text content. Returns empty string if clipboard is empty.',
+        params: [],
+        example: `local text = clipboard.read()
+sys.log("Clipboard: " .. text)
+
+-- Copy from screen OCR to clipboard
+local texts = screen.ocr()
+if texts and #texts > 0 then
+    clipboard.write(texts[1])
+    sys.log("Copied first OCR result")
+end`
+      },
+      {
+        name: 'write', sig: 'clipboard.write(text)', ret: 'boolean',
+        desc: 'Write text to the system clipboard.',
+        params: [{ name: 'text', type: 'string', desc: 'Text to copy' }],
+        example: `-- Copy a URL to clipboard
+clipboard.write("https://example.com")
+
+-- Copy device info
+local w, h = screen.get_size()
+clipboard.write("Screen: " .. w .. "×" .. h)`
+      },
+    ]
+  },
+  {
+    module: 'json', color: '#29b6f6',
+    desc: 'JSON encoding and decoding via NSJSONSerialization.',
+    fns: [
+      {
+        name: 'encode', sig: 'json.encode(value)', ret: 'string | nil',
+        desc: 'Encode a Lua table/value to JSON string. Returns pretty-printed JSON.',
+        params: [{ name: 'value', type: 'any', desc: 'Table, string, number, or boolean' }],
+        example: `local data = {
+    name = "IOSControl",
+    version = "0.7.0",
+    features = {"touch", "screen", "lua"}
+}
+local str = json.encode(data)
+sys.log(str)`
+      },
+      {
+        name: 'decode', sig: 'json.decode(str)', ret: 'any | nil',
+        desc: 'Parse a JSON string into Lua table/value. Returns nil + error on invalid JSON.',
+        params: [{ name: 'str', type: 'string', desc: 'JSON string' }],
+        example: `local str = '{"name":"John","age":30}'
+local obj = json.decode(str)
+sys.log(obj.name)  -- "John"
+sys.log(obj.age)   -- 30
+
+-- Parse API response
+local res = http.get("https://httpbin.org/json")
+if res then
+    local data = json.decode(res.body)
+    sys.log(json.encode(data))
+end`
+      },
+    ]
+  },
+  {
+    module: 'base64', color: '#ab47bc',
+    desc: 'Base64 encoding and decoding.',
+    fns: [
+      {
+        name: 'encode', sig: 'base64.encode(data)', ret: 'string',
+        desc: 'Encode a string to Base64.',
+        params: [{ name: 'data', type: 'string', desc: 'Raw string or binary data' }],
+        example: `local encoded = base64.encode("Hello World!")
+sys.log(encoded)  -- "SGVsbG8gV29ybGQh"`
+      },
+      {
+        name: 'decode', sig: 'base64.decode(str)', ret: 'string | nil',
+        desc: 'Decode a Base64 string. Returns nil on invalid input.',
+        params: [{ name: 'str', type: 'string', desc: 'Base64-encoded string' }],
+        example: `local decoded = base64.decode("SGVsbG8gV29ybGQh")
+sys.log(decoded)  -- "Hello World!"`
+      },
+    ]
+  },
+  {
+    module: 're', color: '#ef5350',
+    desc: 'Regular expressions via NSRegularExpression (ICU regex syntax).',
+    fns: [
+      {
+        name: 'match', sig: 're.match(str, pattern)', ret: 'string | nil',
+        desc: 'Find first match of regex pattern in string.',
+        params: [
+          { name: 'str', type: 'string', desc: 'Input string' },
+          { name: 'pattern', type: 'string', desc: 'ICU regex pattern' },
+        ],
+        example: `local m = re.match("Hello World 123", "\\\\d+")
+sys.log(m)  -- "123"
+
+local email = re.match("Contact: user@email.com", "[\\\\w.]+@[\\\\w.]+")
+sys.log(email)  -- "user@email.com"`
+      },
+      {
+        name: 'gmatch', sig: 're.gmatch(str, pattern)', ret: 'table',
+        desc: 'Find all matches of regex pattern. Returns array of matched strings.',
+        params: [
+          { name: 'str', type: 'string', desc: 'Input string' },
+          { name: 'pattern', type: 'string', desc: 'ICU regex pattern' },
+        ],
+        example: `local numbers = re.gmatch("a1 b22 c333", "\\\\d+")
+for _, n in ipairs(numbers) do
+    sys.log(n)  -- "1", "22", "333"
+end`
+      },
+      {
+        name: 'gsub', sig: 're.gsub(str, pattern, replacement)', ret: 'string',
+        desc: 'Replace all matches with replacement string. Supports $1, $2 capture group references.',
+        params: [
+          { name: 'str', type: 'string', desc: 'Input string' },
+          { name: 'pattern', type: 'string', desc: 'ICU regex pattern' },
+          { name: 'replacement', type: 'string', desc: 'Replacement template' },
+        ],
+        example: `local result = re.gsub("Hello World", "World", "Lua")
+sys.log(result)  -- "Hello Lua"
+
+-- Remove all digits
+local clean = re.gsub("abc123def456", "\\\\d+", "")
+sys.log(clean)  -- "abcdef"`
+      },
+      {
+        name: 'test', sig: 're.test(str, pattern)', ret: 'boolean',
+        desc: 'Test if pattern matches anywhere in string.',
+        params: [
+          { name: 'str', type: 'string', desc: 'Input string' },
+          { name: 'pattern', type: 'string', desc: 'ICU regex pattern' },
+        ],
+        example: `if re.test("Hello123", "\\\\d") then
+    sys.log("Contains digits")
+end
+
+-- Check if URL pattern
+if re.test("https://example.com", "^https?://") then
+    sys.log("Valid URL")
+end`
+      },
+    ]
+  },
+  {
+    module: 'http', color: '#26a69a',
+    desc: 'HTTP client — synchronous GET and POST requests via NSURLSession. Timeout: 30s.',
+    fns: [
+      {
+        name: 'get', sig: 'http.get(url [, headers])', ret: 'table | nil',
+        desc: 'Perform HTTP GET request. Returns table with status, body, headers fields. Returns nil + error string on failure.',
+        params: [
+          { name: 'url', type: 'string', desc: 'Full URL' },
+          { name: 'headers', type: 'table', desc: 'Key-value header pairs', opt: true },
+        ],
+        example: `-- Simple GET
+local res = http.get("https://httpbin.org/get")
+if res then
+    sys.log("Status: " .. res.status)
+    sys.log("Body: " .. res.body)
+end
+
+-- GET with custom headers
+local res = http.get("https://api.example.com/data", {
+    ["Authorization"] = "Bearer token123",
+    ["Accept"] = "application/json"
+})`
+      },
+      {
+        name: 'post', sig: 'http.post(url, body [, content_type [, headers]])', ret: 'table | nil',
+        desc: 'Perform HTTP POST request. Returns table with status and body fields.',
+        params: [
+          { name: 'url', type: 'string', desc: 'Full URL' },
+          { name: 'body', type: 'string', desc: 'Request body' },
+          { name: 'content_type', type: 'string', desc: 'Content-Type header', opt: true, def: '"application/x-www-form-urlencoded"' },
+          { name: 'headers', type: 'table', desc: 'Extra headers', opt: true },
+        ],
+        example: `-- POST JSON
+local payload = json.encode({name = "test", value = 42})
+local res = http.post(
+    "https://httpbin.org/post",
+    payload,
+    "application/json"
+)
+if res then
+    sys.log("Status: " .. res.status)
+    local data = json.decode(res.body)
+    sys.log("Echo: " .. json.encode(data.json))
+end`
+      },
+    ]
+  },
+  {
+    module: 'timer', color: '#78909c',
+    desc: 'High-resolution timing utilities.',
+    fns: [
+      {
+        name: 'sleep', sig: 'timer.sleep(ms)', ret: 'void',
+        desc: 'Sleep for specified milliseconds. Alias for sys.msleep().',
+        params: [{ name: 'ms', type: 'number', desc: 'Milliseconds to sleep' }],
+        example: `timer.sleep(500)  -- Wait 500ms`
+      },
+      {
+        name: 'now', sig: 'timer.now()', ret: 'number',
+        desc: 'Get monotonic clock time in milliseconds since boot. Ideal for measuring elapsed time.',
+        params: [],
+        example: `local t0 = timer.now()
+
+-- Do some work
+touch.tap(200, 400)
+sys.msleep(100)
+
+local elapsed = timer.now() - t0
+sys.log("Elapsed: " .. string.format("%.1f", elapsed) .. " ms")`
+      },
+    ]
+  },
+];
+
+// ══════════════════════════════════════════
+// Render
+// ══════════════════════════════════════════
+
+const sidebarNav = document.getElementById('sidebar-nav');
+const apiContent = document.getElementById('api-content');
+const searchInput = document.getElementById('search-input');
+const noResults = document.getElementById('no-results');
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderSidebar() {
+  let html = '';
+  API.forEach(mod => {
+    const count = mod.fns.length;
+    html += `<div class="nav-section">${mod.module}</div>`;
+    mod.fns.forEach(fn => {
+      html += `<a class="nav-item" data-target="fn-${mod.module}-${fn.name}" onclick="scrollToFn(this)">
+        <span class="dot" style="background:${mod.color}"></span>
+        ${mod.module}.${fn.name}
+      </a>`;
+    });
+  });
+  sidebarNav.innerHTML = html;
+}
+
+function renderContent(filter) {
+  let html = '';
+  let anyVisible = false;
+
+  API.forEach(mod => {
+    const filteredFns = filter
+      ? mod.fns.filter(fn =>
+          `${mod.module}.${fn.name}`.toLowerCase().includes(filter) ||
+          fn.desc.toLowerCase().includes(filter) ||
+          fn.sig.toLowerCase().includes(filter))
+      : mod.fns;
+
+    if (filteredFns.length === 0) return;
+    anyVisible = true;
+
+    html += `<section class="module-section" id="mod-${mod.module}">`;
+    html += `<h2 class="module-title"><span class="dot" style="background:${mod.color}"></span>${mod.module}</h2>`;
+    html += `<p class="module-desc">${mod.desc}</p>`;
+
+    filteredFns.forEach(fn => {
+      const sigParts = fn.sig.replace(mod.module + '.', `<span class="fn-module">${mod.module}</span>.`);
+      const sigHtml = sigParts
+        .replace(fn.name, `<span class="fn-name">${fn.name}</span>`)
+        .replace(/\[([^\]]+)\]/g, '<span class="fn-optional">[$1]</span>');
+
+      html += `<div class="fn-card" id="fn-${mod.module}-${fn.name}">`;
+      html += `<div class="fn-card-header">
+        <div class="fn-sig">${sigHtml}</div>
+        <span class="fn-ret-badge">→ ${escapeHtml(fn.ret)}</span>
+      </div>`;
+      html += `<div class="fn-card-body">`;
+      html += `<p class="fn-desc">${fn.desc}</p>`;
+
+      // Params table
+      if (fn.params.length > 0) {
+        html += `<table class="params-table"><thead><tr>
+          <th>Param</th><th>Type</th><th>Description</th>
+        </tr></thead><tbody>`;
+        fn.params.forEach(p => {
+          const optTag = p.opt ? ` <span class="p-opt">(optional, default: ${p.def || 'nil'})</span>` : '';
+          html += `<tr>
+            <td class="p-name">${p.name}</td>
+            <td class="p-type">${p.type}</td>
+            <td class="p-desc">${p.desc}${optTag}</td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+      }
+
+      // Code example
+      html += `<div class="code-block">
+        <div class="code-block-header">
+          <span>example</span>
+          <button class="copy-btn" onclick="copyCode(this)">
+            <i class="material-icons">content_copy</i> Copy
+          </button>
+        </div>
+        <pre>${escapeHtml(fn.example)}</pre>
+      </div>`;
+
+      html += `</div></div>`;
+    });
+
+    html += `</section>`;
+  });
+
+  apiContent.innerHTML = html;
+  noResults.style.display = anyVisible ? 'none' : 'block';
+
+  // Update sidebar active states
+  updateSidebarFilter(filter);
+}
+
+function updateSidebarFilter(filter) {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (!filter) {
+      item.style.display = '';
+      return;
+    }
+    const target = item.getAttribute('data-target');
+    const el = document.getElementById(target);
+    item.style.display = el ? '' : 'none';
+  });
+  document.querySelectorAll('.nav-section').forEach(sec => {
+    if (!filter) { sec.style.display = ''; return; }
+    let next = sec.nextElementSibling;
+    let hasVisible = false;
+    while (next && !next.classList.contains('nav-section')) {
+      if (next.style.display !== 'none') hasVisible = true;
+      next = next.nextElementSibling;
+    }
+    sec.style.display = hasVisible ? '' : 'none';
+  });
+}
+
+function scrollToFn(el) {
+  const id = el.getAttribute('data-target');
+  const target = document.getElementById(id);
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Highlight
+    target.style.borderColor = 'var(--accent)';
+    setTimeout(() => { target.style.borderColor = ''; }, 1500);
+  }
+  // Update active
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  // Close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = pre.textContent;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  } catch(e) {}
+  // Show toast
+  const toast = document.getElementById('copy-toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1500);
+  btn.innerHTML = '<i class="material-icons">check</i> Copied!';
+  setTimeout(() => {
+    btn.innerHTML = '<i class="material-icons">content_copy</i> Copy';
+  }, 1500);
+}
+
+// Intersection observer for sidebar highlight
+function setupScrollSpy() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        document.querySelectorAll('.nav-item').forEach(n => {
+          n.classList.toggle('active', n.getAttribute('data-target') === id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  document.querySelectorAll('.fn-card').forEach(card => observer.observe(card));
+}
+
+// Search
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  renderContent(q || null);
+});
+
+// Init
+renderSidebar();
+renderContent(null);
+setupScrollSpy();
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 # 📋 IOSControl Rebuild — Todo
 
 > Rebuild từ đầu, từ đơn giản → phức tạp
+> Cập nhật: 2026-04-02 19:44
 
 ---
 
@@ -18,15 +19,6 @@
 - [x] `make package` → `IOSControlApp.tipa` OK
 - [x] Watchdog: tự kill daemon khi xoá app (dùng `_NSGetExecutablePath` + `access()` check mỗi 5s)
 - [x] `/api/kill` endpoint: kill daemon thủ công (không cần reboot!)
-
-### Files Phase 1:
-
-- `Makefile` — Theos Application + daemon compile + tipa packaging
-- `main.m` / `AppDelegate.m/.h` — App launcher, posix_spawn daemon
-- `IOSControlDaemon.m` — Standalone daemon (HID, touch, keyboard, watchdog)
-- `Entitlements.plist` — Full XXTouch entitlements
-- `Resources/Info.plist` — UIBackgroundModes
-- `Resources/silence.wav` — Silent audio (backup, không cần thiết với daemon)
 
 ---
 
@@ -115,16 +107,6 @@
 - [x] Ctrl+Enter → Run, FAB → Run
 - [x] Verify: chạy Lua từ browser ✅ (sys.log xuất hiện trong Device Log)
 
-### Files Phase 5:
-
-- `ICLuaEngine.h/m` — Lua VM engine
-- `lua/` — Lua 5.4.7 source (embedded)
-- `ICHTTPServer.m` — +3 routes script, version 0.5.0
-- `IOSControlDaemon.m` — ic_luaInit() thêm vào main()
-- `Makefile` — LUA_SRCS, -DLUA_USE_IOS
-- `static/app.js` — Script tab wired
-- `static/index.html` — v0.5.0, placeholder updated
-
 ---
 
 ## Phase 6: OCR + Image Processing ✅ VERIFIED BUILD
@@ -184,7 +166,7 @@
 
 ## Phase 8: Native iPhone UI ✅ VERIFIED BUILD
 
-> Phụ thuộc Phase 7 complete. UITabBarController + 4 tabs + dark mode + purple accent.
+> UITabBarController + 4 tabs + dark mode + purple accent.
 
 - [x] Change `AppDelegate.m` window root to `UITabBarController`
 - [x] Extract daemon `posix_spawn()` to `ICDaemonLauncher.h/m`
@@ -274,120 +256,58 @@
 
 ---
 
-## 🐛 Phase 11: Bug Fixes (ưu tiên cao → thấp)
+## 🐛 Phase 11: Bug Fixes
 
-### 🔴 BUG-1: sys.toast / sys.alert — daemon không có UIWindow ✅ FIXED
+### ✅ FIXED (8 bugs)
 
-> Fix: Sử dụng IPC (Darwin Notification) kết hợp với UNUserNotificationCenter để hiển thị Toast đè lên trên tất cả Apps qua dạng Local Notification Banner.
+| Bug | Tình trạng | Mô tả | Fix |
+|-----|-----------|-------|-----|
+| BUG-1 | ✅ FIXED | `sys.toast`/`sys.alert` — daemon không có UIWindow | IPC Darwin Notification + UNUserNotificationCenter + ICToastService |
+| BUG-2 | ✅ FIXED | `/api/app/list` trả về empty trên TrollStore | Fallback scan `/var/containers/Bundle/Application/` |
+| BUG-3 | ✅ FIXED | ICScriptsViewController "New Script" không mở editor | SFSafariViewController tới script_edit.html#<name> |
+| BUG-5 | ✅ FIXED | `http.get/post` HTTPS fail (ATS) | `NSAllowsArbitraryLoads=YES` trong Info.plist |
+| BUG-7 | ✅ FIXED | Device model raw string ("iPhone10,1") | `uname().machine` → lookup table 40+ models |
+| BUG-10 | ✅ FIXED | Daemon bị kill không tự restart | setsid + memorystatus + App watchdog 3s |
+| BUG-11 | ✅ FIXED | Home/Lock button không hoạt động | Consumer Menu `{0x0C, 0x40}` + Admin client |
+| BUG-12 | ✅ FIXED | Unicode text (Tiếng Việt) qua `key.input_text()` | IPC clipboard paste: daemon→app→Cmd+V |
+| BUG-13 | ✅ FIXED | Không truyền phím PC → iPhone qua Web IDE | WS keydown → phím iPhone ánh xạ |
 
-- [x] Fix: Cấu hình UNUserNotificationCenter quyền notification trong AppDelegate.
-- [x] Fix: Thay thế fallback UIWindow trong daemon bằng IPC (ghi file temp + gửi `com.ioscontrol.showToast`).
-- [x] Fix: Lắng nghe IPC ở App và gọi local notification banner.
-- [x] Fix: alert dùng `objc_msgSend` IMP cast thay direct selector
-- [ ] Test on device: `sys.toast("hello")` → hiển thị banner notification trên mọi màn hình
+### 🟡 NEEDS TESTING (chưa verify on device)
 
-### 🔴 BUG-2: /api/app/list trả về empty trên TrollStore ✅ FIXED
+| Bug | Mô tả | Test cần làm |
+|-----|-------|-------------|
+| BUG-1 | Toast notification | `sys.toast("hello")` → banner hiển thị mọi màn hình |
+| BUG-2 | App list | `app.list()` → có apps |
+| BUG-3 | New Script editor | Tap New → editor mở |
+| BUG-5 | HTTPS requests | `http.get("https://httpbin.org/get")` → status 200 |
+| BUG-7 | Device model name | Device Info tab hiện tên đẹp |
+| BUG-10 | Daemon respawn | Kill daemon → app tự respawn trong ~10s |
 
-> Fix: Thêm fs fallback scan `/var/containers/Bundle/Application/` đọc Info.plist
+### 🔴 OPEN BUGS
 
-- [x] Fix: Fallback scan `/var/containers/Bundle/Application/`
-- [x] Fix: Also try `/private/var/containers/Bundle/Application/`
-- [ ] Test on device: `app.list()` → có apps
+| Bug | Priority | Mô tả | Action needed |
+|-----|----------|-------|---------------|
+| BUG-4 | 🟡 MEDIUM | Console duplicate log lines | Track `_lastLogLength`, chỉ append phần mới |
+| BUG-6 | ✅ NOT A BUG | Color Picker /api/screen route | Route hoạt động đúng, không cần fix |
+| BUG-8 | 🟢 LOW | `screen.get_size()` trả 0,0 khi chưa capture | Init gScreenW/gScreenH từ UIScreen khi daemon start |
+| BUG-9 | 🟢 LOW | Color Picker touch scroll conflict trên iPhone | `preventDefault()` + `pointerId` API |
 
-### 🔴 BUG-3: ICScriptsViewController — "New Script" không mở editor ✅ FIXED
+---
 
-> Fix: Sau khi save → mở SFSafariViewController tới script_edit.html#<name>
+## 🗓️ Tiếp theo (chưa plan)
 
-- [x] Fix: SFSafariViewController open `http://127.0.0.1:46952/static/script_edit.html#<name>`
-- [x] Fix: Auto-append `.lua` extension nếu thiếu
-- [ ] Test on device: Tap New → editor mở
+### Ưu tiên cao
+- [ ] Test toàn bộ BUG fixes đã implement trên device
+- [ ] Fix BUG-4: Console duplicate log lines
+- [ ] Build & deploy phiên bản mới nhất lên device
 
-### 🟡 BUG-4: ICConsoleViewController polling — duplicate log lines [HIGH]
+### Ưu tiên trung bình
+- [ ] Fix BUG-8: screen.get_size() init
+- [ ] Fix BUG-9: Picker touch scroll conflict
+- [ ] Thêm Lua API: `sys.home()`, `sys.lock()` (đã có ic_pressKey, cần expose)
 
-> Không track lastOffset → mỗi poll lấy toàn bộ log → append lặp
-
-- [ ] Fix: Thêm ivar `NSUInteger _lastLogLength` để chỉ append phần mới
-- [ ] Fix: So sánh length trước khi append vào UITextView
-- [ ] Test: Log chạy 5s không bị duplicate
-
-### 🟡 BUG-5: http.get/post — HTTPS fail (ATS) ✅ FIXED
-
-> Fix: Thêm `NSAllowsArbitraryLoads=YES` vào `Resources/Info.plist`
-
-- [x] Fix: `NSAllowsArbitraryLoads = YES` trong Info.plist
-- [ ] Test on device: `http.get("https://httpbin.org/get")` → status 200
-
-### 🟡 BUG-6: Color Picker — /api/screen route ✅ NOT A BUG
-
-> Route `/api/screen` nhận `query` param đúng cách — không cần fix
-
-- [ ] Fix: Kiểm tra ICHTTPServer.m route `/api/screen` có nhận `quality` query param không
-- [ ] Fix: Nếu không → sửa picker.html gọi `/api/screen` (không có query) hoặc thêm param parsing
-- [ ] Test: Picker load ảnh thực từ device
-
-### 🟡 BUG-7: Device model raw string ✅ FIXED
-
-> Fix: `uname().machine` → lookup table 40+ models → "iPhone 15 Pro" etc.
-
-- [x] Fix: `uname()` + lookup table (iPhone 11 → 16, SE, Simulator)
-- [x] Fix: Thêm `hwID` field vào JSON response
-- [ ] Test on device: Device Info tab hiện tên đẹp
-
-### 🟢 BUG-8: screen.get_size() trả 0,0 khi chưa capture [LOW]
-
-> `gScreenW/gScreenH` = 0 cho đến khi có lần capture đầu tiên
-
-- [ ] Fix: Init `gScreenW/gScreenH` từ `UIScreen.mainScreen.bounds` khi daemon start
-- [ ] Test: `screen.get_size()` ngay sau boot trả đúng resolution
-
-### 🟢 BUG-9: Color Picker / Matrix Dict — touch scroll conflict trên iPhone [LOW]
-
-> `touchend` và `scroll` conflict → khó chọn màu chính xác
-
-- [ ] Fix: Thêm `preventDefault()` và dùng `pointerId` API thay touch events
-- [ ] Test: Chọn màu trên iPhone không bị scroll page
-
-### 🔴 BUG-10: Daemon bị kill không tự restart ✅ FIXED
-
-> Daemon hay bị Jetsam kill, app không tự respawn lại
-
-**Daemon-side hardening:**
-
-- [x] `setsid()` — tách hoàn toàn khỏi parent session (ngăn iOS kill theo parent)
-- [x] `memorystatus_control(16)` — disable Jetsam memory limit
-- [x] `memorystatus_control(5, priority=10)` — set foreground priority (không bị idle-kill)
-- [x] `memorystatus_control(4, dirty=1)` — mark dirty (không bị kill khi idle)
-- [x] `setpriority(PRIO_PROCESS, -5)` — boost scheduling priority
-- [x] `SIGPIPE/SIGINT/SIGQUIT` → SIG_IGN — ignore thêm signals
-
-**App-side watchdog (XXTouch pattern):**
-
-- [x] `NSTimer` 5s poll `/api/status` từ AppDelegate
-- [x] 2 miss liên tiếp → `spawnDaemonWithCompletion:` tự động
-- [x] `applicationDidBecomeActive:` → check ngay + respawn nếu chết
-- [x] `isRespawning` flag để tránh double-spawn
-- [ ] Test: Kill daemon thủ công → app tự respawn trong ~10s
-
-### 🔴 BUG-11: Home/Lock button không hoạt động trên một số dòng iPhone ✅ FIXED
-
-> Nút Home vật lý (như iPhone 8) bị SpringBoard block khi dùng AppleVendor event. Cần gửi đúng Consumer Menu event.
-
-- [x] Fix: Chuyển sang dispatch event `page=0x0C, usage=0x40` cho Home và `0x30` cho Lock.
-- [x] Cập nhật: Thêm Lua bindings `sys.home()`, `sys.lock()`, và `key.press()`.
-
-### 🔴 BUG-12: Gõ ký tự Unicode (Tiếng Việt) qua `key.input_text()` bị lỗi ✅ FIXED
-
-> Không thể truyền Unicode text qua HID keyboard event (chỉ nhận ASCII).
-
-- [x] Fix: Phát hiện text Unicode, tự động chuyển hướng qua Clipboard paste.
-- [x] Fix: Áp dụng IPC (Inter-Process Communication): Daemon lưu clipboard file tạm -> Gửi Darwin Notification `com.ioscontrol.setPasteboard` -> Main App nhận và thiết lập system clipboard -> Daemon dispatch tổ hợp phím `Cmd+V`.
-- [x] Fix: Thêm Delay 400ms và đảm bảo Cmd+V chạy trên `main` thread chống deadlock.
-
-### 🔴 BUG-13: Chưa hỗ trợ truyền phím từ máy tính qua giao diện Web IDE ✅ FIXED
-
-> Người dùng cần gõ phím trực tiếp trên PC và dispatch thành phím trên điện thoại.
-
-- [x] Fix: Bắt sự kiện keydown từ giao diện.
-- [x] Fix: Ánh xạ chuẩn Web keycode sang bảng tên phím iPhone.
-- [x] Fix: Truyền payload dạng `{ mode: 'key', ... }` hoặc `{ mode: 'text', ... }` qua WS.
-- [x] Fix: Cập nhật route xử lý mode JSON trong `ICHTTPServer.m`.
+### Nice to have
+- [ ] Script encryption 9f
+- [ ] Daemon microservices 10e
+- [ ] CI/CD pipeline (auto build + push)
+- [ ] OTA update mechanism

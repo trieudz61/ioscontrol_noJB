@@ -175,8 +175,12 @@
     screen: "Live Screen",
     script: "Script Editor",
     log: "Device Log",
-    files: "Files",
     settings: "Settings",
+    picker: "Color Picker",
+    applist: "App List",
+    devcontrol: "Device Control",
+    apidocs: "API Docs",
+    tplmaker: "Template Maker",
   };
 
   var tabActions = {
@@ -241,6 +245,15 @@
       startLogPolling();
     } else {
       stopLogPolling();
+    }
+
+    // Lazy-load iframe tabs (data-src → src on first visit)
+    if (tabEl) {
+      var iframe = tabEl.querySelector('iframe[data-src]');
+      if (iframe && !iframe.src) {
+        iframe.src = iframe.getAttribute('data-src');
+        iframe.removeAttribute('data-src');
+      }
     }
   }
 
@@ -344,11 +357,11 @@
     }
     screenPollImg = new Image();
     screenPollImg.src =
-      "/api/screen?quality=" + (config.quality || 40) + "&t=" + Date.now();
+      "/api/screen?quality=" + (config.quality || 70) + "&t=" + Date.now();
     screenPollImg.onload = function () {
       drawImageToCanvas(screenPollImg);
       state.frameCount++;
-      setTimeout(screenPollNext, 150); // 150ms → server TTL=200ms → ~5fps
+      setTimeout(screenPollNext, config.interval || 100);
     };
     screenPollImg.onerror = function () {
       setTimeout(screenPollNext, 500); // back off on error
@@ -690,10 +703,17 @@
     tooltip.style.top = canvasRect.top - containerRect.top + canvasY - 8 + "px";
     tooltip.classList.add("show");
 
-    // Copy to clipboard
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(hex);
-    }
+    // Copy to clipboard (execCommand fallback for HTTP)
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = hex;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    } catch(e) {}
     snackbar("Color: " + hex + " — copied!", "success");
 
     clearTimeout(tooltip._hideTimer);
@@ -791,6 +811,8 @@
   $("btn-clear-log").addEventListener("click", function () {
     $("log-textarea").value = "";
     state.lastLog = "";
+    // Also clear server-side log buffer
+    fetch("/api/system/log", { method: "DELETE" }).catch(function(){});
     snackbar("Log cleared");
   });
 
@@ -810,113 +832,18 @@
   // ═══════════════════════════════════════════
   // Script Editor Actions
   // ═══════════════════════════════════════════
-
-  var scriptStatusTimer = null;
-
-  function getScriptCode() {
-    var editor = $("script-editor");
-    return editor ? editor.value.trim() : "";
-  }
-
-  function appendScriptOutput(msg) {
-    var out = $("script-output");
-    if (!out) return;
-    var ts = new Date().toLocaleTimeString();
-    out.value += "[" + ts + "] " + msg + "\n";
-    out.scrollTop = out.scrollHeight;
-  }
-
-  function setScriptRunning(running) {
-    var runBtn = $("btn-editor-run");
-    var stopBtn = $("btn-editor-stop");
-    var fab = $("fab-run");
-    var statusEl = $("script-status-label");
-    if (!runBtn) return;
-
-    if (running) {
-      runBtn.disabled = true;
-      runBtn.querySelector &&
-      (runBtn.querySelector(".material-icons") || {}).textContent != null
-        ? (runBtn.querySelector(".material-icons").textContent =
-            "hourglass_empty")
-        : null;
-      if (stopBtn) stopBtn.disabled = false;
-      if (fab) fab.classList.add("running");
-      if (statusEl) statusEl.textContent = "Running…";
-    } else {
-      runBtn.disabled = false;
-      runBtn.querySelector &&
-      (runBtn.querySelector(".material-icons") || {}).textContent != null
-        ? (runBtn.querySelector(".material-icons").textContent = "play_arrow")
-        : null;
-      if (stopBtn) stopBtn.disabled = true;
-      if (fab) fab.classList.remove("running");
-      if (statusEl) statusEl.textContent = "Idle";
-    }
-  }
-
-  function startScriptStatusPoll() {
-    stopScriptStatusPoll();
-    scriptStatusTimer = setInterval(function () {
-      apiGet("/api/script/status", function (err, data) {
-        if (err || !data) return;
-        if (data.status === "idle" || data.status === "error") {
-          stopScriptStatusPoll();
-          setScriptRunning(false);
-          if (data.status === "error" && data.error) {
-            appendScriptOutput("❌ Error: " + data.error);
-            snackbar("Script error: " + data.error, "error");
-          } else {
-            appendScriptOutput("✅ Script completed");
-          }
-        }
-      });
-    }, 500);
-  }
-
-  function stopScriptStatusPoll() {
-    if (scriptStatusTimer) {
-      clearInterval(scriptStatusTimer);
-      scriptStatusTimer = null;
-    }
-  }
+  // Script editor is now fully inside iframe (script_edit.html).
+  // These stubs exist only for keyboard shortcut compatibility.
 
   function runScript() {
-    var code = getScriptCode();
-    if (!code) {
-      snackbar("Script is empty", "error");
-      return;
+    // Delegate to iframe
+    var iframe = $("script-iframe");
+    if (iframe && iframe.contentWindow && iframe.contentWindow.runScript) {
+      iframe.contentWindow.runScript();
+    } else {
+      snackbar("Switch to Script Editor tab first", "error");
     }
-    var out = $("script-output");
-    if (out) out.value = "";
-    appendScriptOutput("▶ Running script...");
-    setScriptRunning(true);
-
-    apiPost("/api/script/run", { code: code }, function (err, data) {
-      if (err || (data && !data.ok)) {
-        setScriptRunning(false);
-        stopScriptStatusPoll();
-        appendScriptOutput(
-          "❌ Failed to start: " + (err || (data && data.error) || "unknown"),
-        );
-        snackbar("Failed to run script", "error");
-        return;
-      }
-      snackbar("Script started", "success");
-      startScriptStatusPoll();
-    });
   }
-
-  $("btn-editor-run").addEventListener("click", runScript);
-
-  $("btn-editor-stop").addEventListener("click", function () {
-    apiPost("/api/script/stop", {}, function (err, data) {
-      if (!err) {
-        appendScriptOutput("⏹ Stop requested");
-        snackbar("Script stopped");
-      }
-    });
-  });
 
   // ═══════════════════════════════════════════
   // Settings

@@ -5,6 +5,10 @@
 #import "ICAppControl.h"
 #import <objc/runtime.h>
 #import <signal.h>
+#import <unistd.h>
+#import <spawn.h>
+#import <sys/wait.h>
+#import <dlfcn.h>
 
 extern void logMsg(const char *fmt, ...);
 
@@ -158,92 +162,210 @@ BOOL ic_appLaunch(NSString *bundleID) {
   return ok;
 }
 
+// ═══════════════════════════════════════════
+// PID lookup via sysctl(KERN_PROC)
+// ═══════════════════════════════════════════
+
+#import <sys/sysctl.h>
+
+// proc_pidpath declaration (from libproc)
+extern int proc_pidpath(int pid, void *buffer, uint32_t buffersize);
+#define PROC_PIDPATHINFO_MAXSIZE 4096
+
+static pid_t findPidForBundleID(NSString *bundleID) {
+  if (!bundleID.length) return -1;
+
+  // Get all process PIDs
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
+  size_t size = 0;
+  if (sysctl(mib, 4, NULL, &size, NULL, 0) < 0) return -1;
+
+  struct kinfo_proc *procs = (struct kinfo_proc *)malloc(size);
+  if (!procs) return -1;
+  if (sysctl(mib, 4, procs, &size, NULL, 0) < 0) {
+    free(procs);
+    return -1;
+  }
+
+  int count = (int)(size / sizeof(struct kinfo_proc));
+  const char *target = bundleID.UTF8String;
+  // Extract app name from bundleID (e.g., "com.apple.mobilesafari" → "MobileSafari")
+  NSString *appName = [bundleID componentsSeparatedByString:@"."].lastObject;
+  pid_t foundPid = -1;
+
+  for (int i = 0; i < count; i++) {
+    pid_t pid = procs[i].kp_proc.p_pid;
+    if (pid <= 1) continue;
+
+    // Get executable path for this PID
+    char pathBuf[PROC_PIDPATHINFO_MAXSIZE];
+    int pathLen = proc_pidpath(pid, pathBuf, sizeof(pathBuf));
+    if (pathLen > 0) {
+      NSString *path = [NSString stringWithUTF8String:pathBuf];
+      // Check if path contains the bundleID or app name
+      if ([path containsString:bundleID] ||
+          [path.lastPathComponent.lowercaseString
+              isEqualToString:appName.lowercaseString]) {
+        foundPid = pid;
+        break;
+      }
+    }
+
+    // Also check process name
+    const char *pname = procs[i].kp_proc.p_comm;
+    if (pname && appName &&
+        strcasecmp(pname, appName.UTF8String) == 0) {
+      foundPid = pid;
+      break;
+    }
+  }
+  free(procs);
+  return foundPid;
+}
+
 BOOL ic_appKill(NSString *bundleID) {
   if (!bundleID.length)
     return NO;
 
-  // Try FBSSystemService killService approach
-  // Fallback: find PID via sysctl and kill it
-  id proxy = _proxy(bundleID);
-  if (!proxy) {
-    logMsg("❌ [AppCtrl] No proxy for: %s", bundleID.UTF8String);
-    return NO;
+  logMsg("🔪 [AppCtrl] Killing: %s", bundleID.UTF8String);
+
+  // ── Strategy 1: Find PID via sysctl + SIGKILL (most reliable on TrollStore) ──
+  pid_t pid = findPidForBundleID(bundleID);
+  if (pid > 1) {
+    // Try SIGTERM first (graceful)
+    if (kill(pid, SIGTERM) == 0) {
+      logMsg("📡 [AppCtrl] Sent SIGTERM to pid=%d", pid);
+      // Wait briefly for graceful shutdown
+      usleep(300000); // 300ms
+
+      // Check if still alive, if so SIGKILL
+      if (kill(pid, 0) == 0) {
+        kill(pid, SIGKILL);
+        logMsg("📡 [AppCtrl] Sent SIGKILL to pid=%d", pid);
+        usleep(100000); // 100ms
+      }
+
+      // Verify
+      if (kill(pid, 0) != 0) {
+        logMsg("✅ [AppCtrl] Killed via signal (pid=%d): %s", pid,
+               bundleID.UTF8String);
+        return YES;
+      }
+    } else {
+      logMsg("⚠️ [AppCtrl] kill(%d, SIGTERM) failed: %s", pid, strerror(errno));
+    }
+  } else {
+    logMsg("⚠️ [AppCtrl] PID not found for: %s", bundleID.UTF8String);
   }
 
-  // Try terminateApplicationWithBundleID via workspace
-  id ws = _workspace();
-  SEL sel = NSSelectorFromString(@"terminateApplicationWithBundleID:");
-  if ([ws respondsToSelector:sel]) {
-    @try {
-      [ws performSelector:sel withObject:bundleID];
-      logMsg("✅ [AppCtrl] Killed: %s", bundleID.UTF8String);
-      return YES;
-    } @catch (NSException *e) {
-      logMsg("⚠️ [AppCtrl] Kill exception: %s", e.reason.UTF8String);
+  // ── Strategy 2: killall by process name variants ──
+  // Try various name derivations from bundleID
+  NSString *lastComponent = [bundleID componentsSeparatedByString:@"."].lastObject;
+  NSArray *namesToTry = @[
+    lastComponent,
+    [lastComponent lowercaseString],
+    bundleID,
+  ];
+
+  for (NSString *procName in namesToTry) {
+    extern char **environ;
+    char *argv[] = {"/usr/bin/killall", "-9", (char *)procName.UTF8String, NULL};
+    pid_t spawnPid = 0;
+    int spawnRet = posix_spawn(&spawnPid, "/usr/bin/killall", NULL, NULL, argv, environ);
+    if (spawnRet == 0) {
+      int status = 0;
+      waitpid(spawnPid, &status, 0);
+      if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+        logMsg("✅ [AppCtrl] Killed via killall '%s': %s",
+               procName.UTF8String, bundleID.UTF8String);
+        return YES;
+      }
     }
   }
 
-  logMsg("❌ [AppCtrl] kill not supported on this OS version");
+  // ── Strategy 3: FBSSystemService (jailbreak/advanced entitlements only) ──
+  Class fbsSvc = NSClassFromString(@"FBSSystemService");
+  if (fbsSvc) {
+    @try {
+      id svc = [fbsSvc performSelector:NSSelectorFromString(@"sharedService")];
+      if (svc) {
+        SEL termSel = NSSelectorFromString(
+            @"terminateApplication:forReason:andReport:withDescription:");
+        if ([svc respondsToSelector:termSel]) {
+          NSMethodSignature *sig = [svc methodSignatureForSelector:termSel];
+          NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+          [inv setSelector:termSel];
+          [inv setTarget:svc];
+          [inv setArgument:&bundleID atIndex:2];
+          int reason = 5;
+          [inv setArgument:&reason atIndex:3];
+          BOOL report = NO;
+          [inv setArgument:&report atIndex:4];
+          NSString *desc = @"IOSControl kill";
+          [inv setArgument:&desc atIndex:5];
+          [inv invoke];
+          logMsg("✅ [AppCtrl] Killed via FBSSystemService: %s",
+                 bundleID.UTF8String);
+          return YES;
+        }
+      }
+    } @catch (NSException *e) {
+      logMsg("⚠️ [AppCtrl] FBS kill exception: %s", e.reason.UTF8String);
+    }
+  }
+
+  logMsg("❌ [AppCtrl] All kill strategies failed for: %s",
+         bundleID.UTF8String);
   return NO;
 }
 
 BOOL ic_appIsRunning(NSString *bundleID) {
   if (!bundleID.length)
     return NO;
-  id ws = _workspace();
-  if (!ws)
-    return NO;
 
-  // applicationProcessInfo:forBundleID is available on older iOS
-  // Attempt via frontmost / running processes
-  SEL sel = NSSelectorFromString(@"applicationProcessIdentifierForBundleID:");
-  if ([ws respondsToSelector:sel]) {
-    @try {
-      int pid = (int)(intptr_t)[ws performSelector:sel withObject:bundleID];
-      return (pid > 0);
-    } @catch (__unused NSException *e) {
+  // Most reliable: check if we can find a PID for this bundle
+  pid_t pid = findPidForBundleID(bundleID);
+  if (pid > 1) {
+    // Verify the process is actually alive
+    if (kill(pid, 0) == 0) {
+      logMsg("📱 [AppCtrl] %s is running (pid=%d)", bundleID.UTF8String, pid);
+      return YES;
     }
   }
 
-  // Fallback: check via proxy state
-  id proxy = _proxy(bundleID);
-  if (!proxy)
-    return NO;
-  SEL stateSel = NSSelectorFromString(@"isRunning");
-  if ([proxy respondsToSelector:stateSel]) {
-    return (BOOL)[proxy performSelector:stateSel];
-  }
+  logMsg("📱 [AppCtrl] %s is NOT running", bundleID.UTF8String);
   return NO;
 }
 
 NSString *ic_appFrontmost(void) {
-  // Use SBApplication / SpringBoard to get frontmost
-  // Available approach: FBSSystemService or SpringBoard notifications
-  // Simple: use LSApplicationWorkspace frontmostApplication
-  id ws = _workspace();
-  if (!ws)
-    return nil;
+  // Strategy 1: Use SBSSpringBoardServerPort + SBSCopyFrontmostApplicationDisplayIdentifier
+  // This is the most reliable on TrollStore
+  void *sbServices = dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
+  if (sbServices) {
+    typedef mach_port_t (*SBSSpringBoardServerPortFunc)(void);
+    typedef CFStringRef (*SBSCopyFrontmostFunc)(mach_port_t);
 
-  SEL sel = NSSelectorFromString(@"frontmostApplicationIdentifier");
-  if ([ws respondsToSelector:sel]) {
-    @try {
-      NSString *bid = [ws performSelector:sel];
-      logMsg("📱 [AppCtrl] Frontmost: %s", bid.UTF8String ?: "nil");
-      return bid;
-    } @catch (__unused NSException *e) {
+    SBSSpringBoardServerPortFunc getPort =
+        (SBSSpringBoardServerPortFunc)dlsym(sbServices, "SBSSpringBoardServerPort");
+    SBSCopyFrontmostFunc copyFrontmost =
+        (SBSCopyFrontmostFunc)dlsym(sbServices, "SBSCopyFrontmostApplicationDisplayIdentifier");
+
+    if (getPort && copyFrontmost) {
+      mach_port_t port = getPort();
+      if (port != MACH_PORT_NULL) {
+        CFStringRef cfBid = copyFrontmost(port);
+        if (cfBid) {
+          NSString *bid = (__bridge_transfer NSString *)cfBid;
+          if (bid.length > 0) {
+            logMsg("📱 [AppCtrl] Frontmost: %s (SBS)", bid.UTF8String);
+            return bid;
+          }
+        }
+      }
     }
   }
 
-  // Alternative: check via SBApplicationController
-  Class sbCtrl = NSClassFromString(@"SBApplicationController");
-  if (sbCtrl) {
-    id ctrl = [sbCtrl performSelector:NSSelectorFromString(@"sharedInstance")];
-    id app =
-        [ctrl performSelector:NSSelectorFromString(@"frontmostApplication")];
-    if (app) {
-      return [app performSelector:NSSelectorFromString(@"bundleIdentifier")];
-    }
-  }
-
+  // Strategy 2: Just return nil gracefully
+  logMsg("⚠️ [AppCtrl] Cannot determine frontmost app");
   return nil;
 }

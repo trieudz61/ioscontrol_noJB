@@ -18,6 +18,8 @@
 #import <sys/utsname.h>
 #import <time.h>
 #import <unistd.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <ImageIO/ImageIO.h>
 
 // Forward declaration (defined in WS section below)
 static uint64_t ms_now(void);
@@ -45,6 +47,7 @@ extern dispatch_queue_t gHIDQueue; // serial: HID touch dispatch
 // ═══════════════════════════════════════════
 // Lightweight JSON helpers
 // ═══════════════════════════════════════════
+
 
 static double jsonDouble(const char *json, const char *key, double defaultVal) {
   // Search for "key": or "key" :
@@ -178,6 +181,27 @@ static double queryDouble(const char *query, const char *key,
     return defaultVal;
   pos += strlen(search);
   return atof(pos);
+}
+
+static int jsonInt(const char *json, const char *key) {
+  return (int)jsonDouble(json, key, 0);
+}
+
+static void queryParam(const char *query, const char *key, char *out,
+                       size_t outSize) {
+  out[0] = '\0';
+  if (!query) return;
+  char search[64];
+  snprintf(search, sizeof(search), "%s=", key);
+  const char *pos = strstr(query, search);
+  if (!pos) return;
+  pos += strlen(search);
+  size_t i = 0;
+  while (pos[i] && pos[i] != '&' && i < outSize - 1) {
+    out[i] = pos[i];
+    i++;
+  }
+  out[i] = '\0';
 }
 
 // ═══════════════════════════════════════════
@@ -1346,6 +1370,168 @@ static BOOL isWebSocketUpgrade(const char *buf) {
 // HTTP request parser + router
 // ═══════════════════════════════════════════
 
+// ═══════════════════════════════════════════
+// Template Management — crop, list, delete
+// ═══════════════════════════════════════════
+
+static NSString *templateDir(void) {
+  NSString *dir = @"/var/mobile/Documents/templates";
+  NSFileManager *fm = [NSFileManager defaultManager];
+  if (![fm fileExistsAtPath:dir]) {
+    [fm createDirectoryAtPath:dir
+        withIntermediateDirectories:YES
+                         attributes:nil
+                              error:nil];
+  }
+  return dir;
+}
+
+// POST /api/screen/crop  body: {"x":100,"y":200,"w":50,"h":50,"name":"btn"}
+static void handleScreenCrop(int clientFd, const char *body) {
+  int x = jsonInt(body, "x");
+  int y = jsonInt(body, "y");
+  int w = jsonInt(body, "w");
+  int h = jsonInt(body, "h");
+  char nameBuf[128];
+  jsonString(body, "name", nameBuf, sizeof(nameBuf));
+
+  if (w <= 0 || h <= 0 || nameBuf[0] == '\0') {
+    sendError(clientFd, 400, "need x, y, w, h, name");
+    return;
+  }
+
+  // Sanitize name
+  NSString *name = [[NSString stringWithUTF8String:nameBuf]
+      stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+  NSString *filename =
+      [NSString stringWithFormat:@"%@.png", name];
+  NSString *savePath =
+      [templateDir() stringByAppendingPathComponent:filename];
+
+  // Capture screen at full quality
+  __block NSData *jpeg = nil;
+  dispatch_sync(gScreenQueue, ^{
+    @autoreleasepool { jpeg = ic_captureScreen(1.0f); }
+  });
+
+  if (!jpeg || jpeg.length == 0) {
+    sendError(clientFd, 500, "screen capture failed");
+    return;
+  }
+
+  // Decode JPEG → CGImage
+  CGDataProviderRef prov =
+      CGDataProviderCreateWithCFData((__bridge CFDataRef)jpeg);
+  CGImageRef fullImg =
+      CGImageCreateWithJPEGDataProvider(prov, NULL, true,
+                                        kCGRenderingIntentDefault);
+  CGDataProviderRelease(prov);
+  if (!fullImg) {
+    sendError(clientFd, 500, "JPEG decode failed");
+    return;
+  }
+
+  size_t imgW = CGImageGetWidth(fullImg);
+  size_t imgH = CGImageGetHeight(fullImg);
+
+  // Clamp region
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x + w > (int)imgW) w = (int)imgW - x;
+  if (y + h > (int)imgH) h = (int)imgH - y;
+
+  if (w <= 0 || h <= 0) {
+    CGImageRelease(fullImg);
+    sendError(clientFd, 400, "region out of bounds");
+    return;
+  }
+
+  // Crop
+  CGRect cropRect = CGRectMake(x, y, w, h);
+  CGImageRef cropped = CGImageCreateWithImageInRect(fullImg, cropRect);
+  CGImageRelease(fullImg);
+  if (!cropped) {
+    sendError(clientFd, 500, "crop failed");
+    return;
+  }
+
+  // Encode to PNG
+  NSMutableData *pngData = [NSMutableData data];
+  CGImageDestinationRef dest = CGImageDestinationCreateWithData(
+      (__bridge CFMutableDataRef)pngData,
+      (__bridge CFStringRef)@"public.png", 1, NULL);
+  if (!dest) {
+    CGImageRelease(cropped);
+    sendError(clientFd, 500, "PNG encoder init failed");
+    return;
+  }
+  CGImageDestinationAddImage(dest, cropped, NULL);
+  CGImageDestinationFinalize(dest);
+  CFRelease(dest);
+  CGImageRelease(cropped);
+
+  // Save
+  BOOL ok = [pngData writeToFile:savePath atomically:YES];
+  if (!ok) {
+    sendError(clientFd, 500, "file write failed");
+    return;
+  }
+
+  logMsg("✅ [Template] Saved %s (%dx%d, %zu bytes)", savePath.UTF8String, w,
+         h, pngData.length);
+
+  char resp[512];
+  snprintf(resp, sizeof(resp),
+           "{\"ok\":true,\"path\":\"%s\",\"size\":%zu,\"w\":%d,\"h\":%d}",
+           savePath.UTF8String, pngData.length, w, h);
+  sendResponse(clientFd, 200, "OK", "application/json", resp);
+}
+
+// GET /api/templates → list saved templates
+static void handleTemplateList(int clientFd) {
+  NSString *dir = templateDir();
+  NSArray *files = [[NSFileManager defaultManager]
+      contentsOfDirectoryAtPath:dir error:nil];
+  NSMutableArray *items = [NSMutableArray array];
+  for (NSString *f in files) {
+    if (![f hasSuffix:@".png"]) continue;
+    NSString *fullPath = [dir stringByAppendingPathComponent:f];
+    NSDictionary *attrs = [[NSFileManager defaultManager]
+        attributesOfItemAtPath:fullPath error:nil];
+    NSString *name = [f stringByDeletingPathExtension];
+    [items addObject:@{
+      @"name": name,
+      @"path": fullPath,
+      @"size": @([attrs fileSize]),
+    }];
+  }
+  NSData *json = [NSJSONSerialization dataWithJSONObject:items options:0 error:nil];
+  NSString *str = [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding];
+  sendResponse(clientFd, 200, "OK", "application/json", str.UTF8String);
+}
+
+// DELETE /api/templates?name=xxx → delete a template
+static void handleTemplateDelete(int clientFd, const char *query) {
+  char nameBuf[128];
+  queryParam(query, "name", nameBuf, sizeof(nameBuf));
+  if (nameBuf[0] == '\0') {
+    sendError(clientFd, 400, "missing name");
+    return;
+  }
+  NSString *name = [NSString stringWithUTF8String:nameBuf];
+  NSString *path = [templateDir()
+      stringByAppendingPathComponent:
+          [NSString stringWithFormat:@"%@.png", name]];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  if ([fm fileExistsAtPath:path]) {
+    [fm removeItemAtPath:path error:nil];
+    logMsg("🗑️ [Template] Deleted: %s", path.UTF8String);
+    sendOK(clientFd, "deleted");
+  } else {
+    sendError(clientFd, 404, "template not found");
+  }
+}
+
 static void handleClient(int clientFd) {
   // ── Phase 1: read initial chunk (headers + possibly partial body) ──
   char buf[4096];
@@ -1420,7 +1606,17 @@ static void handleClient(int clientFd) {
     body = "";
   }
 
-  logMsg("🌐 %s %s (body=%zu bytes)", method, path, strlen(body));
+  // Skip logging for high-frequency polling routes (Web IDE auto-polls these)
+  if (strcmp(path, "/api/screen") != 0 &&
+      strcmp(path, "/api/status") != 0 &&
+      strcmp(path, "/api/stream") != 0 &&
+      strcmp(path, "/api/screen/color") != 0 &&
+      strcmp(path, "/api/log") != 0 &&
+      strcmp(path, "/api/script/status") != 0 &&
+      strcmp(path, "/api/system/log") != 0 &&
+      strcmp(method, "OPTIONS") != 0) {
+    logMsg("🌐 %s %s (body=%zu bytes)", method, path, strlen(body));
+  }
 
   // ── WebSocket upgrade ──
   if (strcmp(path, "/ws/control") == 0 && isWebSocketUpgrade(buf)) {
@@ -1530,6 +1726,16 @@ static void handleClient(int clientFd) {
   } else if (strcmp(path, "/api/system/log") == 0 &&
              (strcmp(method, "GET") == 0 || strcmp(method, "DELETE") == 0)) {
     handleSystemLog(clientFd, method);
+    // ── Template Management ──
+  } else if (strcmp(path, "/api/screen/crop") == 0 &&
+             strcmp(method, "POST") == 0) {
+    handleScreenCrop(clientFd, body);
+  } else if (strcmp(path, "/api/templates") == 0 &&
+             strcmp(method, "GET") == 0) {
+    handleTemplateList(clientFd);
+  } else if (strcmp(path, "/api/templates") == 0 &&
+             strcmp(method, "DELETE") == 0) {
+    handleTemplateDelete(clientFd, query);
   } else if (strcmp(method, "GET") == 0 && strncmp(path, "/static/", 8) == 0) {
     handleStaticFile(clientFd, path);
   } else {

@@ -8,6 +8,8 @@
 #import "ICLuaStdlib.h"
 #import "ICScreenCapture.h"
 #import "ICVision.h"
+#import <CoreGraphics/CoreGraphics.h>
+#import <ImageIO/ImageIO.h>
 
 // Lua C API (from embedded source)
 #include "lua/lauxlib.h"
@@ -150,6 +152,39 @@ static int lua_touch_up(lua_State *L) {
   ic_touchUp(x, y, (int)f);
   return 0;
 }
+// touch.tap_image(path [, threshold]) → true (or nil, errmsg)
+static int lua_touch_tap_image(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  double threshold = luaL_optnumber(L, 2, 0.8);
+  int outX = 0, outY = 0;
+  BOOL found = ic_findImage([NSString stringWithUTF8String:path], threshold,
+                            &outX, &outY);
+  if (!found) {
+    lua_pushnil(L);
+    lua_pushstring(L, "image not found");
+    return 2;
+  }
+  ic_tap(outX, outY);
+  logMsg("🤖 [Lua] touch.tap_image → tap(%d, %d)", outX, outY);
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
+// touch.tap_text(text) → true (or nil, errmsg)
+static int lua_touch_tap_text(lua_State *L) {
+  const char *text = luaL_checkstring(L, 1);
+  int outX = 0, outY = 0;
+  BOOL found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+  if (!found) {
+    lua_pushnil(L);
+    lua_pushstring(L, "text not found on screen");
+    return 2;
+  }
+  ic_tap(outX, outY);
+  logMsg("🤖 [Lua] touch.tap_text('%s') → tap(%d, %d)", text, outX, outY);
+  lua_pushboolean(L, 1);
+  return 1;
+}
 
 static const luaL_Reg kTouchLib[] = {{"tap", lua_touch_tap},
                                      {"swipe", lua_touch_swipe},
@@ -157,6 +192,8 @@ static const luaL_Reg kTouchLib[] = {{"tap", lua_touch_tap},
                                      {"down", lua_touch_down},
                                      {"move", lua_touch_move},
                                      {"up", lua_touch_up},
+                                     {"tap_image", lua_touch_tap_image},
+                                     {"tap_text", lua_touch_tap_text},
                                      {NULL, NULL}};
 
 // ═══════════════════════════════════════════
@@ -255,6 +292,117 @@ static int lua_screen_find_multi_color(lua_State *L) {
   return 1;
 }
 
+// screen.find_text(target) → x, y  (or nil, errmsg)
+static int lua_screen_find_text(lua_State *L) {
+  const char *text = luaL_checkstring(L, 1);
+  int outX = 0, outY = 0;
+  BOOL found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+  if (!found) {
+    lua_pushnil(L);
+    lua_pushstring(L, "text not found");
+    return 2;
+  }
+  lua_pushinteger(L, outX);
+  lua_pushinteger(L, outY);
+  return 2;
+}
+
+// screen.find_image(path [, threshold]) → x, y  (or nil, errmsg)
+static int lua_screen_find_image(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  double threshold = luaL_optnumber(L, 2, 0.8);
+  int outX = 0, outY = 0;
+  BOOL found = ic_findImage([NSString stringWithUTF8String:path], threshold,
+                            &outX, &outY);
+  if (!found) {
+    lua_pushnil(L);
+    lua_pushstring(L, "image not found");
+    return 2;
+  }
+  lua_pushinteger(L, outX);
+  lua_pushinteger(L, outY);
+  return 2;
+}
+
+// screen.save_crop(x, y, w, h, name) → path (or nil, errmsg)
+static int lua_screen_save_crop(lua_State *L) {
+  int x = (int)luaL_checkinteger(L, 1);
+  int y = (int)luaL_checkinteger(L, 2);
+  int w = (int)luaL_checkinteger(L, 3);
+  int h = (int)luaL_checkinteger(L, 4);
+  const char *name = luaL_checkstring(L, 5);
+
+  if (w <= 0 || h <= 0) {
+    lua_pushnil(L);
+    lua_pushstring(L, "invalid dimensions");
+    return 2;
+  }
+
+  // Ensure templates dir exists
+  NSString *dir = @"/var/mobile/Documents/templates";
+  [[NSFileManager defaultManager] createDirectoryAtPath:dir
+      withIntermediateDirectories:YES attributes:nil error:nil];
+
+  NSString *savePath = [dir stringByAppendingPathComponent:
+      [NSString stringWithFormat:@"%s.png", name]];
+
+  // Capture screen
+  NSData *jpeg = ic_captureScreen(1.0f);
+  if (!jpeg || jpeg.length == 0) {
+    lua_pushnil(L);
+    lua_pushstring(L, "screen capture failed");
+    return 2;
+  }
+
+  // Decode JPEG
+  CGDataProviderRef prov = CGDataProviderCreateWithCFData((__bridge CFDataRef)jpeg);
+  CGImageRef fullImg = CGImageCreateWithJPEGDataProvider(prov, NULL, true, kCGRenderingIntentDefault);
+  CGDataProviderRelease(prov);
+  if (!fullImg) {
+    lua_pushnil(L);
+    lua_pushstring(L, "JPEG decode failed");
+    return 2;
+  }
+
+  // Clamp region
+  size_t imgW = CGImageGetWidth(fullImg);
+  size_t imgH = CGImageGetHeight(fullImg);
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x + w > (int)imgW) w = (int)imgW - x;
+  if (y + h > (int)imgH) h = (int)imgH - y;
+
+  // Crop
+  CGImageRef cropped = CGImageCreateWithImageInRect(fullImg, CGRectMake(x, y, w, h));
+  CGImageRelease(fullImg);
+  if (!cropped) {
+    lua_pushnil(L);
+    lua_pushstring(L, "crop failed");
+    return 2;
+  }
+
+  // Encode PNG
+  NSMutableData *pngData = [NSMutableData data];
+  CGImageDestinationRef dest = CGImageDestinationCreateWithData(
+      (__bridge CFMutableDataRef)pngData,
+      (__bridge CFStringRef)@"public.png", 1, NULL);
+  CGImageDestinationAddImage(dest, cropped, NULL);
+  CGImageDestinationFinalize(dest);
+  CFRelease(dest);
+  CGImageRelease(cropped);
+
+  // Save
+  BOOL ok = [pngData writeToFile:savePath atomically:YES];
+  if (!ok) {
+    lua_pushnil(L);
+    lua_pushstring(L, "file write failed");
+    return 2;
+  }
+
+  lua_pushstring(L, savePath.UTF8String);
+  return 1;
+}
+
 static const luaL_Reg kScreenLib[] = {
     {"get_size", lua_screen_get_size},
     {"get_color", lua_screen_get_color},
@@ -262,6 +410,9 @@ static const luaL_Reg kScreenLib[] = {
     {"ocr", lua_screen_ocr},
     {"find_color", lua_screen_find_color},
     {"find_multi_color", lua_screen_find_multi_color},
+    {"find_text", lua_screen_find_text},
+    {"find_image", lua_screen_find_image},
+    {"save_crop", lua_screen_save_crop},
     {NULL, NULL}};
 
 // ═══════════════════════════════════════════

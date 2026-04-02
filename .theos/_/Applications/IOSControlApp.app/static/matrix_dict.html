@@ -221,7 +221,7 @@ document.getElementById('btn-extract').addEventListener('click', () => {
   extractMatrix();
 });
 document.getElementById('btn-copy').addEventListener('click', () => {
-  navigator.clipboard.writeText(document.getElementById('matrix-out').textContent).catch(()=>{});
+  var t=document.getElementById('matrix-out').textContent; try{var ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();}catch(e){}
 });
 
 capture();

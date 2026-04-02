@@ -21,3 +21,18 @@ BOOL ic_findColor(int r, int g, int b, int tolerance, int *outX, int *outY);
 // Returns NSArray<NSDictionary*> each @{@"x": @(int), @"y": @(int)}.
 NSArray<NSDictionary *> *ic_findMultiColor(int r, int g, int b, int tolerance,
                                            int maxCount);
+
+// ─── Text Search (OCR-based)
+// ─────────────────────────────────────────────────────────
+// Capture screen, run OCR, search for target text.
+// Returns YES and sets *outX, *outY to the center of the matching text region.
+// Case-insensitive partial match (containsString).
+BOOL ic_findText(NSString *text, int *outX, int *outY);
+
+// ─── Image Search (template matching)
+// ─────────────────────────────────────────────────
+// Load a template image from file, capture screen, find best match.
+// threshold: 0.0-1.0 (higher = stricter, default 0.8).
+// Returns YES and sets *outX, *outY to center of match.
+BOOL ic_findImage(NSString *imagePath, double threshold,
+                  int *outX, int *outY);
