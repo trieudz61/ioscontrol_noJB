@@ -53,6 +53,17 @@ after-stage::
 		-o $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/IOSControlDaemon
 	@echo "🔏 Signing daemon with entitlements..."
 	ldid -SEntitlements.plist $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/IOSControlDaemon
+	@echo "📦 Compiling ICToastService..."
+	@rm -f $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService
+	xcrun -sdk iphoneos clang -arch arm64 \
+		-fobjc-arc -framework Foundation -framework UIKit -framework CoreFoundation -framework CoreGraphics \
+		-Wno-deprecated-declarations \
+		ICToastService.m \
+		-o $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService
+	@echo "🔏 Signing ICToastService..."
+	ldid -SEntitlements.plist $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService
+	@echo "📄 Copying ICToastService Info.plist..."
+	cp ICToastService-Info.plist $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService-Info.plist
 	@echo "📁 Copying static web files..."
 	cp -r static/ $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/static/
 	@echo "📦 Building TrollStore .tipa..."
