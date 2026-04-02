@@ -7,6 +7,29 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <UIKit/UIKit.h>
 
+static void ictlog(NSString *fmt, ...) NS_FORMAT_FUNCTION(1, 2);
+static void ictlog(NSString *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  NSString *msg = [[NSString alloc] initWithFormat:fmt arguments:args];
+  va_end(args);
+  NSLog(@"🍞 ICToastService: %@", msg);
+  // Write to file for debugging (readable from iPhone console)
+  NSString *log = [NSString stringWithFormat:@"%@: %@\n", [NSDate date], msg];
+  NSFileHandle *fh =
+      [NSFileHandle fileHandleForWritingAtPath:@"/tmp/ictoast_log.txt"];
+  if (!fh) {
+    [@"" writeToFile:@"/tmp/ictoast_log.txt"
+          atomically:NO
+            encoding:NSUTF8StringEncoding
+               error:nil];
+    fh = [NSFileHandle fileHandleForWritingAtPath:@"/tmp/ictoast_log.txt"];
+  }
+  [fh seekToEndOfFile];
+  [fh writeData:[log dataUsingEncoding:NSUTF8StringEncoding]];
+  [fh closeFile];
+}
+
 // ─── IPC constants (same as daemon) ───────────────────────────────────────
 static NSString *const kICToastTextFile = @"/tmp/ioscontrol_toast_text.txt";
 static CFStringRef kICNotifShowToast = CFSTR("com.ioscontrol.showToast");
@@ -23,11 +46,20 @@ static void showToast(NSString *text) {
     gCurrentToastWindow = nil;
   }
 
+  ictlog(@"showToast: %@", text);
   CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
   CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
 
   // ── Create UIWindow at XXTouch's window level ──
-  UIWindow *toastWindow = [[UIWindow alloc] init];
+  UIWindow *toastWindow =
+      [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+  // iOS 13: assign windowScene so UIKit can render
+  if (@available(iOS 13.0, *)) {
+    id scene =
+        UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+    if (scene)
+      [toastWindow setValue:scene forKey:@"windowScene"];
+  }
   toastWindow.windowLevel = 20000099.9;
   toastWindow.backgroundColor = [UIColor clearColor];
   toastWindow.userInteractionEnabled = NO;
@@ -125,7 +157,8 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
 
-  NSLog(@"🍞 ICToastService: started (PID=%d)", getpid());
+  ictlog(@"started (PID=%d, bundle=%@)", getpid(),
+         [[NSBundle mainBundle] bundleIdentifier]);
 
   // Register Darwin notification listener
   CFNotificationCenterAddObserver(
@@ -133,15 +166,22 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
       toastNotificationCallback, kICNotifShowToast, NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
 
-  NSLog(@"🍞 ICToastService: listener registered for %@",
-        (__bridge NSString *)kICNotifShowToast);
+  ictlog(@"listener registered for com.ioscontrol.showToast");
 
-  // Minimal hidden window — no UI needed, we create windows on demand
+  // Minimal transparent window (iOS 13+: needs windowScene)
   self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+  if (@available(iOS 13.0, *)) {
+    id scene =
+        UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+    if (scene)
+      [self.window setValue:scene forKey:@"windowScene"];
+  }
   self.window.windowLevel = UIWindowLevelNormal - 1;
   self.window.backgroundColor = [UIColor clearColor];
+  self.window.rootViewController = [UIViewController new];
   self.window.hidden = YES;
 
+  ictlog(@"window set up OK");
   return YES;
 }
 
