@@ -152,10 +152,9 @@
 }
 
 // ═══════════════════════════════════════════
-// IPC — daemon → main app
+// IPC — daemon → main app (Pasteboard only)
+// Toast: handled by daemon via UNUserNotificationCenter
 // ═══════════════════════════════════════════
-
-static UIWindow *gToastWindow = nil;
 
 static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
                                   CFNotificationName n, const void *obj,
@@ -176,137 +175,13 @@ static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
   });
 }
 
-static void ic_toastCallback(CFNotificationCenterRef c, void *o,
-                             CFNotificationName n, const void *obj,
-                             CFDictionaryRef info) {
-  NSString *path = @"/tmp/ioscontrol_toast_text.txt";
-  NSError *err;
-  NSString *text = [NSString stringWithContentsOfFile:path
-                                             encoding:NSUTF8StringEncoding
-                                                error:&err];
-  if (!text || err)
-    return;
-  NSString *toastText = [text copy];
-  [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-
-  dispatch_async(dispatch_get_main_queue(), ^{
-    // Dismiss previous toast
-    if (gToastWindow) {
-      [gToastWindow.layer removeAllAnimations];
-      gToastWindow.hidden = YES;
-      gToastWindow = nil;
-    }
-
-    CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
-    CGFloat safeTop = 50.0; // below status bar
-
-    // ── Banner card sizing ──
-    CGFloat cardW = screenW - 24;
-    CGFloat cardH = 72.0;
-
-    // Outer window — starts off-screen above
-    UIWindow *w = [[UIWindow alloc]
-        initWithFrame:CGRectMake(0, -cardH - 10, screenW, cardH + safeTop)];
-    w.windowLevel = 20000099.9;
-    w.backgroundColor = [UIColor clearColor];
-    w.userInteractionEnabled = NO;
-    w.hidden = NO;
-    gToastWindow = w;
-
-    // ── Banner card view ──
-    UIView *card = [[UIView alloc]
-        initWithFrame:CGRectMake(12, safeTop - cardH, cardW, cardH)];
-    card.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.97];
-    card.layer.cornerRadius = 16;
-    card.layer.masksToBounds = NO;
-    // Shadow
-    card.layer.shadowColor = [UIColor blackColor].CGColor;
-    card.layer.shadowOpacity = 0.28;
-    card.layer.shadowRadius = 12;
-    card.layer.shadowOffset = CGSizeMake(0, 4);
-    [w addSubview:card];
-
-    // ── App icon circle ──
-    CGFloat iconSize = 36;
-    UIView *iconBg =
-        [[UIView alloc] initWithFrame:CGRectMake(14, (cardH - iconSize) / 2.0,
-                                                 iconSize, iconSize)];
-    iconBg.backgroundColor = [UIColor colorWithRed:0.42
-                                             green:0.38
-                                              blue:1.0
-                                             alpha:1.0];
-    iconBg.layer.cornerRadius = iconSize / 2.0;
-    [card addSubview:iconBg];
-
-    UILabel *iconLabel = [[UILabel alloc] initWithFrame:iconBg.bounds];
-    iconLabel.text = @"⚙️";
-    iconLabel.font = [UIFont systemFontOfSize:18];
-    iconLabel.textAlignment = NSTextAlignmentCenter;
-    [iconBg addSubview:iconLabel];
-
-    // ── Title ──
-    CGFloat textX = 14 + iconSize + 10;
-    CGFloat textW = cardW - textX - 14;
-    UILabel *titleLabel =
-        [[UILabel alloc] initWithFrame:CGRectMake(textX, 12, textW, 18)];
-    titleLabel.text = @"IOSControl";
-    titleLabel.textColor = [UIColor whiteColor];
-    titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-    [card addSubview:titleLabel];
-
-    // ── Message ──
-    UILabel *msgLabel =
-        [[UILabel alloc] initWithFrame:CGRectMake(textX, 32, textW, 32)];
-    msgLabel.text = toastText;
-    msgLabel.textColor = [UIColor colorWithWhite:0.85 alpha:1.0];
-    msgLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
-    msgLabel.numberOfLines = 2;
-    [card addSubview:msgLabel];
-
-    // ── Slide DOWN from top ──
-    [UIView animateWithDuration:0.38
-        delay:0
-        usingSpringWithDamping:0.72
-        initialSpringVelocity:0.6
-        options:UIViewAnimationOptionCurveEaseOut
-        animations:^{
-          // Move card into visible area
-          card.frame =
-              CGRectMake(12, safeTop - cardH + cardH + 8, cardW, cardH);
-          // Expand window to show card
-          w.frame = CGRectMake(0, 0, screenW, safeTop + cardH + 8);
-        }
-        completion:^(BOOL _) {
-          dispatch_after(
-              dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
-              dispatch_get_main_queue(), ^{
-                // Slide back UP
-                [UIView animateWithDuration:0.3
-                    animations:^{
-                      w.frame = CGRectMake(0, -(cardH + 20), screenW,
-                                           safeTop + cardH + 8);
-                    }
-                    completion:^(BOOL __) {
-                      w.hidden = YES;
-                      if (gToastWindow == w)
-                        gToastWindow = nil;
-                    }];
-              });
-        }];
-  });
-}
-
 - (void)registerIPCListeners {
   CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
   CFNotificationCenterAddObserver(
       darwin, (__bridge void *)self, ic_pasteboardCallback,
       CFSTR("com.ioscontrol.setPasteboard"), NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
-  CFNotificationCenterAddObserver(
-      darwin, (__bridge void *)self, ic_toastCallback,
-      CFSTR("com.ioscontrol.showToast"), NULL,
-      CFNotificationSuspensionBehaviorDeliverImmediately);
-  NSLog(@"📡 IPC: Pasteboard + Toast listeners registered");
+  NSLog(@"📡 IPC: Pasteboard listener registered");
 }
 
 // ═══════════════════════════════════════════

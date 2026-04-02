@@ -5,6 +5,7 @@
 #import "ICLuaStdlib.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
+#import <UserNotifications/UserNotifications.h>
 #import <objc/message.h>
 
 #include "lua/lauxlib.h"
@@ -507,7 +508,8 @@ static int lua_sys_alert(lua_State *L) {
   return 0;
 }
 
-// sys.toast(msg [, duration]) — non-blocking HUD + daemon log
+// sys.toast(msg) — posts a real iOS system notification (works even when app
+// killed)
 static int lua_sys_toast(lua_State *L) {
   const char *msg = luaL_checkstring(L, 1);
   NSString *msgStr = [NSString stringWithUTF8String:msg];
@@ -515,64 +517,26 @@ static int lua_sys_toast(lua_State *L) {
   // Always log so it's visible in the Console tab
   logMsg("🍞 [toast] %s", msg);
 
-  // Write to temp file for IPC
-  [msgStr writeToFile:@"/tmp/ioscontrol_toast_text.txt"
-           atomically:YES
-             encoding:NSUTF8StringEncoding
-                error:nil];
+  // Post real system UNUserNotification (banner like Messenger)
+  UNUserNotificationCenter *center =
+      [UNUserNotificationCenter currentNotificationCenter];
+  UNMutableNotificationContent *content =
+      [[UNMutableNotificationContent alloc] init];
+  content.title = @"IOSControl";
+  content.body = msgStr;
+  content.sound = [UNNotificationSound defaultSound];
 
-  // Post Darwin notification to Main App (works when app is in background)
-  CFNotificationCenterPostNotification(
-      CFNotificationCenterGetDarwinNotifyCenter(),
-      CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
-
-  // Post local UNUserNotification (works even when app is killed, like
-  // Messenger)
-  Class UNCenter = NSClassFromString(@"UNUserNotificationCenter");
-  if (UNCenter) {
-    id center = [UNCenter performSelector:@selector(currentNotificationCenter)];
-    if (center) {
-      Class UNContent = NSClassFromString(@"UNMutableNotificationContent");
-      id content = [[UNContent alloc] init];
-      [content setValue:@"IOSControl" forKey:@"title"];
-      [content setValue:msgStr forKey:@"body"];
-      // Set proper sound
-      Class UNSound = NSClassFromString(@"UNNotificationSound");
-      id sound =
-          UNSound ? [UNSound performSelector:@selector(defaultSound)] : nil;
-      if (sound)
-        [content setValue:sound forKey:@"sound"];
-
-      // Build request via NSInvocation (requestWithIdentifier:content:trigger:
-      // has 3 args)
-      Class UNRequest = NSClassFromString(@"UNNotificationRequest");
-      SEL makeReqSel =
-          NSSelectorFromString(@"requestWithIdentifier:content:trigger:");
-      NSMethodSignature *sig =
-          [UNRequest methodSignatureForSelector:makeReqSel];
-      NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-      [inv setTarget:UNRequest];
-      [inv setSelector:makeReqSel];
-      NSString *reqId = @"ic.toast";
-      id trigger = nil;
-      [inv setArgument:&reqId atIndex:2];
-      [inv setArgument:&content atIndex:3];
-      [inv setArgument:&trigger atIndex:4];
-      [inv invoke];
-      __unsafe_unretained id request = nil;
-      [inv getReturnValue:&request];
-
-      if (request) {
-        [center performSelector:@selector
-                (removeDeliveredNotificationsWithIdentifiers:)
-                     withObject:@[ @"ic.toast" ]];
-        [center performSelector:@selector(addNotificationRequest:
-                                           withCompletionHandler:)
-                     withObject:request
-                     withObject:nil];
-      }
-    }
-  }
+  UNNotificationRequest *request =
+      [UNNotificationRequest requestWithIdentifier:@"ic.toast"
+                                           content:content
+                                           trigger:nil];
+  [center removeDeliveredNotificationsWithIdentifiers:@[ @"ic.toast" ]];
+  [center addNotificationRequest:request
+           withCompletionHandler:^(NSError *err) {
+             if (err)
+               logMsg("⚠️ [toast] notification error: %s",
+                      err.localizedDescription.UTF8String);
+           }];
 
   return 0;
 }
