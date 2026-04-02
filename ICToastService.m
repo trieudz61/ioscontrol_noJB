@@ -196,7 +196,28 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
 
 int main(int argc, char *argv[]) {
   @autoreleasepool {
-    return UIApplicationMain(argc, argv, nil,
-                             NSStringFromClass([ICToastAppDelegate class]));
+    // Write BEFORE UIApplicationMain — this tells us if binary starts at all
+    NSString *earlyLog =
+        [NSString stringWithFormat:@"[%@] main() entered, PID=%d, about to "
+                                   @"call UIApplicationMain...\n",
+                                   [NSDate date], getpid()];
+    [earlyLog writeToFile:@"/tmp/ictoast_log.txt"
+               atomically:YES
+                 encoding:NSUTF8StringEncoding
+                    error:nil];
+
+    int ret = UIApplicationMain(argc, argv, nil,
+                                NSStringFromClass([ICToastAppDelegate class]));
+
+    // If we get here, UIApplicationMain returned (shouldn't happen normally)
+    NSString *exitLog =
+        [NSString stringWithFormat:@"[%@] UIApplicationMain returned: %d\n",
+                                   [NSDate date], ret];
+    NSFileHandle *fh =
+        [NSFileHandle fileHandleForWritingAtPath:@"/tmp/ictoast_log.txt"];
+    [fh seekToEndOfFile];
+    [fh writeData:[exitLog dataUsingEncoding:NSUTF8StringEncoding]];
+    [fh closeFile];
+    return ret;
   }
 }

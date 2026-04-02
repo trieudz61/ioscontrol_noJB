@@ -125,8 +125,21 @@ static const int kDaemonPort = 46952;
 
   if (result == 0) {
     NSLog(@"🍞 ICToastService launched from UIApp context (PID=%d)", pid);
+    NSString *msg =
+        [NSString stringWithFormat:@"spawn OK PID=%d path=%@\n", pid, svcPath];
+    [msg writeToFile:@"/tmp/ictoast_spawn.txt"
+          atomically:YES
+            encoding:NSUTF8StringEncoding
+               error:nil];
   } else {
     NSLog(@"❌ ICToastService spawn failed: %d (%s)", result, strerror(result));
+    NSString *msg =
+        [NSString stringWithFormat:@"spawn FAILED err=%d (%s) path=%@\n",
+                                   result, strerror(result), svcPath];
+    [msg writeToFile:@"/tmp/ictoast_spawn.txt"
+          atomically:YES
+            encoding:NSUTF8StringEncoding
+               error:nil];
   }
 }
 

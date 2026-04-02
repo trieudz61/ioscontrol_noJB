@@ -528,15 +528,24 @@ static int lua_sys_toast(lua_State *L) {
       CFNotificationCenterGetDarwinNotifyCenter(),
       CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
 
-  // Debug: dump ICToastService log (visible in Web IDE console)
+  // Debug: dump ICToastService spawn + runtime logs
+  NSString *spawnLog =
+      [NSString stringWithContentsOfFile:@"/tmp/ictoast_spawn.txt"
+                                encoding:NSUTF8StringEncoding
+                                   error:nil];
+  if (spawnLog.length > 0) {
+    logMsg("🔍 [spawn] %s", spawnLog.UTF8String);
+  } else {
+    logMsg("⚠️ [spawn] no /tmp/ictoast_spawn.txt — spawnToastService may not "
+           "have been called");
+  }
   NSString *svcLog = [NSString stringWithContentsOfFile:@"/tmp/ictoast_log.txt"
                                                encoding:NSUTF8StringEncoding
                                                   error:nil];
   if (svcLog.length > 0) {
-    logMsg("🔍 [ICToastService log] %s", svcLog.UTF8String);
+    logMsg("🔍 [ICToastService] %s", svcLog.UTF8String);
   } else {
-    logMsg("⚠️ [ICToastService] no log at /tmp/ictoast_log.txt — service may "
-           "not have started");
+    logMsg("⚠️ [ICToastService] no /tmp/ictoast_log.txt — binary never started");
   }
 
   return 0;
