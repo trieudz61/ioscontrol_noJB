@@ -127,6 +127,24 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
 static void bootstrapUIKit(void) {
   ictlog(@"bootstrapping UIKit (3-step XXTUIService pattern)...");
 
+  // Step 0: GraphicsServices (GSInitialize / GSEventInitialize)
+  // Initializes core graphics subsystem, required before BackBoard
+  void *gsHandle = dlopen("/System/Library/PrivateFrameworks/"
+                          "GraphicsServices.framework/GraphicsServices",
+                          RTLD_LAZY);
+  if (gsHandle) {
+    typedef void (*InitFunc)(void);
+    InitFunc gsInit = (InitFunc)dlsym(gsHandle, "GSInitialize");
+    if (gsInit)
+      gsInit();
+    InitFunc gsEventInit = (InitFunc)dlsym(gsHandle, "GSEventInitialize");
+    if (gsEventInit)
+      gsEventInit();
+    ictlog(@"GraphicsServices initialization OK");
+  } else {
+    ictlog(@"GraphicsServices dlopen failed");
+  }
+
   // Step 1: BKSDisplayServicesStart — connect to BackBoard display server
   // This establishes the rendering pipeline (Mach port to backboardd)
   // From: BackBoardServices.framework
