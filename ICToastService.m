@@ -125,22 +125,52 @@ static void toastNotificationCallback(CFNotificationCenterRef c, void *o,
 // directly and create UIWindows on it.
 
 static void bootstrapUIKit(void) {
-  ictlog(@"bootstrapping UIKit...");
+  ictlog(@"bootstrapping UIKit (3-step XXTUIService pattern)...");
 
-  // UIApplicationInstantiateSingleton is a private function in UIKitCore
-  // It creates UIApplication.sharedApplication without the full
-  // UIApplicationMain dance (no RunningBoard registration)
-  typedef void (*InstantiateSingletonFunc)(Class);
+  // Step 1: BKSDisplayServicesStart — connect to BackBoard display server
+  // This establishes the rendering pipeline (Mach port to backboardd)
+  // From: BackBoardServices.framework
+  void *bbsHandle = dlopen("/System/Library/PrivateFrameworks/"
+                           "BackBoardServices.framework/BackBoardServices",
+                           RTLD_LAZY);
+  if (bbsHandle) {
+    typedef void (*BKSDisplayServicesStartFunc)(void);
+    BKSDisplayServicesStartFunc displayStart =
+        (BKSDisplayServicesStartFunc)dlsym(bbsHandle,
+                                           "BKSDisplayServicesStart");
+    if (displayStart) {
+      displayStart();
+      ictlog(@"BKSDisplayServicesStart OK");
+    } else {
+      ictlog(@"BKSDisplayServicesStart not found");
+    }
+  } else {
+    ictlog(@"BackBoardServices dlopen failed");
+  }
+
+  // Step 2: UIApplicationInitialize — setup UIKit internal state
+  // This initializes UIKit's display/rendering subsystem
   void *uikitHandle =
       dlopen("/System/Library/PrivateFrameworks/UIKitCore.framework/UIKitCore",
              RTLD_LAZY);
   if (!uikitHandle) {
-    // Try public framework path
     uikitHandle =
         dlopen("/System/Library/Frameworks/UIKit.framework/UIKit", RTLD_LAZY);
   }
 
   if (uikitHandle) {
+    typedef void (*UIApplicationInitializeFunc)(void);
+    UIApplicationInitializeFunc appInit = (UIApplicationInitializeFunc)dlsym(
+        uikitHandle, "UIApplicationInitialize");
+    if (appInit) {
+      appInit();
+      ictlog(@"UIApplicationInitialize OK");
+    } else {
+      ictlog(@"UIApplicationInitialize not found");
+    }
+
+    // Step 3: UIApplicationInstantiateSingleton — create UIApplication
+    typedef void (*InstantiateSingletonFunc)(Class);
     InstantiateSingletonFunc instantiate = (InstantiateSingletonFunc)dlsym(
         uikitHandle, "UIApplicationInstantiateSingleton");
     if (instantiate) {
@@ -148,16 +178,12 @@ static void bootstrapUIKit(void) {
       ictlog(@"UIApplicationInstantiateSingleton OK, shared=%@",
              [UIApplication sharedApplication]);
     } else {
-      ictlog(
-          @"UIApplicationInstantiateSingleton not found, trying manual init");
-      // Fallback: create UIApplication manually
-      [UIApplication sharedApplication];
+      ictlog(@"UIApplicationInstantiateSingleton not found");
     }
   } else {
-    ictlog(@"failed to dlopen UIKitCore");
+    ictlog(@"UIKitCore dlopen failed");
   }
 
-  // Initialize UIScreen (needed for UIWindow creation)
   UIScreen *screen = [UIScreen mainScreen];
   ictlog(@"UIScreen: %@, bounds=%@", screen, NSStringFromCGRect(screen.bounds));
 }
