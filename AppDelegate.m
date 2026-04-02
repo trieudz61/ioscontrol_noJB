@@ -192,58 +192,99 @@ static void ic_toastCallback(CFNotificationCenterRef c, void *o,
   dispatch_async(dispatch_get_main_queue(), ^{
     // Dismiss previous toast
     if (gToastWindow) {
+      [gToastWindow.layer removeAllAnimations];
       gToastWindow.hidden = YES;
       gToastWindow = nil;
     }
 
     CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
-    CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
+    CGFloat safeTop = 50.0; // below status bar
 
-    UIWindow *w = [[UIWindow alloc] init];
+    // ── Banner card sizing ──
+    CGFloat cardW = screenW - 24;
+    CGFloat cardH = 72.0;
+
+    // Outer window — starts off-screen above
+    UIWindow *w = [[UIWindow alloc]
+        initWithFrame:CGRectMake(0, -cardH - 10, screenW, cardH + safeTop)];
     w.windowLevel = 20000099.9;
     w.backgroundColor = [UIColor clearColor];
     w.userInteractionEnabled = NO;
     w.hidden = NO;
     gToastWindow = w;
 
-    CGFloat maxW = screenW - 60;
-    UILabel *label = [[UILabel alloc] init];
-    label.text = toastText;
-    label.textColor = [UIColor whiteColor];
-    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    label.numberOfLines = 3;
-    label.textAlignment = NSTextAlignmentCenter;
-    label.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.92];
-    label.layer.cornerRadius = 14;
-    label.layer.masksToBounds = YES;
+    // ── Banner card view ──
+    UIView *card = [[UIView alloc]
+        initWithFrame:CGRectMake(12, safeTop - cardH, cardW, cardH)];
+    card.backgroundColor = [UIColor colorWithWhite:0.12 alpha:0.97];
+    card.layer.cornerRadius = 16;
+    card.layer.masksToBounds = NO;
+    // Shadow
+    card.layer.shadowColor = [UIColor blackColor].CGColor;
+    card.layer.shadowOpacity = 0.28;
+    card.layer.shadowRadius = 12;
+    card.layer.shadowOffset = CGSizeMake(0, 4);
+    [w addSubview:card];
 
-    CGSize sz = [label sizeThatFits:CGSizeMake(maxW - 32, 200)];
-    sz.width = MIN(sz.width + 40, maxW);
-    sz.height = MAX(sz.height + 20, 40);
+    // ── App icon circle ──
+    CGFloat iconSize = 36;
+    UIView *iconBg =
+        [[UIView alloc] initWithFrame:CGRectMake(14, (cardH - iconSize) / 2.0,
+                                                 iconSize, iconSize)];
+    iconBg.backgroundColor = [UIColor colorWithRed:0.42
+                                             green:0.38
+                                              blue:1.0
+                                             alpha:1.0];
+    iconBg.layer.cornerRadius = iconSize / 2.0;
+    [card addSubview:iconBg];
 
-    w.frame = CGRectMake((screenW - sz.width) / 2.0, screenH - sz.height - 120,
-                         sz.width, sz.height);
-    label.frame = CGRectMake(0, 0, sz.width, sz.height);
-    [w addSubview:label];
+    UILabel *iconLabel = [[UILabel alloc] initWithFrame:iconBg.bounds];
+    iconLabel.text = @"⚙️";
+    iconLabel.font = [UIFont systemFontOfSize:18];
+    iconLabel.textAlignment = NSTextAlignmentCenter;
+    [iconBg addSubview:iconLabel];
 
-    w.alpha = 0;
-    w.transform = CGAffineTransformMakeScale(0.85, 0.85);
-    [UIView animateWithDuration:0.2
+    // ── Title ──
+    CGFloat textX = 14 + iconSize + 10;
+    CGFloat textW = cardW - textX - 14;
+    UILabel *titleLabel =
+        [[UILabel alloc] initWithFrame:CGRectMake(textX, 12, textW, 18)];
+    titleLabel.text = @"IOSControl";
+    titleLabel.textColor = [UIColor whiteColor];
+    titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    [card addSubview:titleLabel];
+
+    // ── Message ──
+    UILabel *msgLabel =
+        [[UILabel alloc] initWithFrame:CGRectMake(textX, 32, textW, 32)];
+    msgLabel.text = toastText;
+    msgLabel.textColor = [UIColor colorWithWhite:0.85 alpha:1.0];
+    msgLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightRegular];
+    msgLabel.numberOfLines = 2;
+    [card addSubview:msgLabel];
+
+    // ── Slide DOWN from top ──
+    [UIView animateWithDuration:0.38
         delay:0
-        usingSpringWithDamping:0.7
-        initialSpringVelocity:0.5
-        options:0
+        usingSpringWithDamping:0.72
+        initialSpringVelocity:0.6
+        options:UIViewAnimationOptionCurveEaseOut
         animations:^{
-          w.alpha = 1;
-          w.transform = CGAffineTransformIdentity;
+          // Move card into visible area
+          card.frame =
+              CGRectMake(12, safeTop - cardH + cardH + 8, cardW, cardH);
+          // Expand window to show card
+          w.frame = CGRectMake(0, 0, screenW, safeTop + cardH + 8);
         }
         completion:^(BOOL _) {
           dispatch_after(
-              dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+              dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
               dispatch_get_main_queue(), ^{
-                [UIView animateWithDuration:0.25
+                // Slide back UP
+                [UIView animateWithDuration:0.3
                     animations:^{
-                      w.alpha = 0;
+                      w.frame = CGRectMake(0, -(cardH + 20), screenW,
+                                           safeTop + cardH + 8);
                     }
                     completion:^(BOOL __) {
                       w.hidden = YES;
