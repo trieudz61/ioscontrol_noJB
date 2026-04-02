@@ -133,6 +133,18 @@
                    [[ICDaemonLauncher shared] spawnToastService];
                  });
 
+  // ── Request notification permission (for daemon → UNUserNotification toast)
+  // ── Daemon posts local notifications so toast works even when app is killed
+  [[UNUserNotificationCenter currentNotificationCenter]
+      requestAuthorizationWithOptions:(UNAuthorizationOptionAlert |
+                                       UNAuthorizationOptionSound |
+                                       UNAuthorizationOptionBadge)
+                    completionHandler:^(BOOL granted, NSError *error) {
+                      NSLog(@"🔔 Notification permission: %@",
+                            granted ? @"granted" : @"denied");
+                    }];
+  [UNUserNotificationCenter currentNotificationCenter].delegate = self;
+
   // ── IPC Listeners ──
   [self registerIPCListeners];
 
@@ -348,6 +360,23 @@ static void ic_toastCallback(CFNotificationCenterRef c, void *o,
 - (void)applicationDidEnterBackground:(UIApplication *)application {
   // Keep watchdog running in background (app has voip/audio background modes)
   NSLog(@"📱 App backgrounded — watchdog continues");
+}
+
+// ── UNUserNotificationCenterDelegate ──
+// Show notification banner even when app is in foreground
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:
+             (void (^)(UNNotificationPresentationOptions))completionHandler {
+  completionHandler(UNNotificationPresentationOptionBanner |
+                    UNNotificationPresentationOptionSound);
+}
+
+// Dismiss notification when user taps it
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+    didReceiveNotificationResponse:(UNNotificationResponse *)response
+             withCompletionHandler:(void (^)(void))completionHandler {
+  completionHandler();
 }
 
 @end
