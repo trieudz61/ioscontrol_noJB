@@ -174,47 +174,8 @@ static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
   });
 }
 
-// Daemon → app IPC for toast
-// Daemon cannot post UNUserNotification (unauthorized process)
-// AppDelegate receives Darwin notification and posts system notification
-// instead
-static void ic_toastCallback(CFNotificationCenterRef c, void *o,
-                             CFNotificationName n, const void *obj,
-                             CFDictionaryRef info) {
-  NSString *path = @"/tmp/ioscontrol_toast_text.txt";
-  NSError *err;
-  NSString *text = [NSString stringWithContentsOfFile:path
-                                             encoding:NSUTF8StringEncoding
-                                                error:&err];
-  if (!text || err)
-    return;
-  [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-
-  NSString *toastText = [text copy];
-  dispatch_async(dispatch_get_main_queue(), ^{
-    // Post real system UNUserNotification from authorized app process
-    UNUserNotificationCenter *center =
-        [UNUserNotificationCenter currentNotificationCenter];
-    UNMutableNotificationContent *content =
-        [[UNMutableNotificationContent alloc] init];
-    content.title = @"IOSControl";
-    content.body = toastText;
-    content.sound = [UNNotificationSound defaultSound];
-    UNNotificationRequest *request =
-        [UNNotificationRequest requestWithIdentifier:@"ic.toast"
-                                             content:content
-                                             trigger:nil];
-    [center removeDeliveredNotificationsWithIdentifiers:@[ @"ic.toast" ]];
-    [center
-        addNotificationRequest:request
-         withCompletionHandler:^(NSError *e) {
-           if (e)
-             NSLog(@"⚠️ toast notification error: %@", e.localizedDescription);
-           else
-             NSLog(@"🔔 toast notification posted: %@", toastText);
-         }];
-  });
-}
+// Toast is handled exclusively by ICToastService (hidden daemon with BackBoard
+// display)
 
 - (void)registerIPCListeners {
   CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
@@ -222,11 +183,7 @@ static void ic_toastCallback(CFNotificationCenterRef c, void *o,
       darwin, (__bridge void *)self, ic_pasteboardCallback,
       CFSTR("com.ioscontrol.setPasteboard"), NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
-  CFNotificationCenterAddObserver(
-      darwin, (__bridge void *)self, ic_toastCallback,
-      CFSTR("com.ioscontrol.showToast"), NULL,
-      CFNotificationSuspensionBehaviorDeliverImmediately);
-  NSLog(@"📡 IPC: Pasteboard + Toast listeners registered");
+  NSLog(@"📡 IPC: Pasteboard listener registered (toast → ICToastService)");
 }
 
 // ═══════════════════════════════════════════

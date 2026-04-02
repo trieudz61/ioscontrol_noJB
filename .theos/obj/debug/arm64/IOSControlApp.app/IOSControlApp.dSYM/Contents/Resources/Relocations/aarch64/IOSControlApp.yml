@@ -12,157 +12,154 @@ relocations:
   - { offset: 0x2A5B, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s, symObjAddr: 0xDE4, symBinAddr: 0x100004E74, symSize: 0x2C }
   - { offset: 0x2A77, size: 0x8, addend: 0x0, symName: '___57-[AppDelegate application:didFinishLaunchingWithOptions:]_block_invoke.48', symObjAddr: 0xE10, symBinAddr: 0x100004EA0, symSize: 0x54 }
   - { offset: 0x2A9F, size: 0x8, addend: 0x0, symName: '___57-[AppDelegate application:didFinishLaunchingWithOptions:]_block_invoke_2.50', symObjAddr: 0xE64, symBinAddr: 0x100004EF4, symSize: 0x8C }
-  - { offset: 0x2AE3, size: 0x8, addend: 0x0, symName: '-[AppDelegate registerIPCListeners]', symObjAddr: 0xEF0, symBinAddr: 0x100004F80, symSize: 0x84 }
-  - { offset: 0x2B23, size: 0x8, addend: 0x0, symName: _ic_pasteboardCallback, symObjAddr: 0xF74, symBinAddr: 0x100005004, symSize: 0x1D4 }
-  - { offset: 0x2BBD, size: 0x8, addend: 0x0, symName: _ic_toastCallback, symObjAddr: 0x1148, symBinAddr: 0x1000051D8, symSize: 0x1F0 }
-  - { offset: 0x2C66, size: 0x8, addend: 0x0, symName: '-[AppDelegate startDaemonWatchdog]', symObjAddr: 0x1338, symBinAddr: 0x1000053C8, symSize: 0xF8 }
-  - { offset: 0x2C98, size: 0x8, addend: 0x0, symName: '-[AppDelegate stopDaemonWatchdog]', symObjAddr: 0x1430, symBinAddr: 0x1000054C0, symSize: 0x60 }
-  - { offset: 0x2CCA, size: 0x8, addend: 0x0, symName: '-[AppDelegate pauseWatchdog]', symObjAddr: 0x1490, symBinAddr: 0x100005520, symSize: 0x40 }
-  - { offset: 0x2CFD, size: 0x8, addend: 0x0, symName: '-[AppDelegate resumeWatchdog]', symObjAddr: 0x14D0, symBinAddr: 0x100005560, symSize: 0x68 }
-  - { offset: 0x2D30, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogTick]', symObjAddr: 0x1538, symBinAddr: 0x1000055C8, symSize: 0xF0 }
-  - { offset: 0x2D63, size: 0x8, addend: 0x0, symName: '___27-[AppDelegate watchdogTick]_block_invoke', symObjAddr: 0x1628, symBinAddr: 0x1000056B8, symSize: 0xF0 }
-  - { offset: 0x2DC1, size: 0x8, addend: 0x0, symName: '-[AppDelegate respawnDaemon]', symObjAddr: 0x1718, symBinAddr: 0x1000057A8, symSize: 0x10C }
-  - { offset: 0x2DF4, size: 0x8, addend: 0x0, symName: '___28-[AppDelegate respawnDaemon]_block_invoke', symObjAddr: 0x1824, symBinAddr: 0x1000058B4, symSize: 0x98 }
-  - { offset: 0x2E43, size: 0x8, addend: 0x0, symName: '-[AppDelegate applicationDidBecomeActive:]', symObjAddr: 0x18BC, symBinAddr: 0x10000594C, symSize: 0x108 }
-  - { offset: 0x2E85, size: 0x8, addend: 0x0, symName: '___42-[AppDelegate applicationDidBecomeActive:]_block_invoke', symObjAddr: 0x19C4, symBinAddr: 0x100005A54, symSize: 0x94 }
-  - { offset: 0x2EE3, size: 0x8, addend: 0x0, symName: '-[AppDelegate applicationDidEnterBackground:]', symObjAddr: 0x1A58, symBinAddr: 0x100005AE8, symSize: 0x58 }
-  - { offset: 0x2F25, size: 0x8, addend: 0x0, symName: '-[AppDelegate userNotificationCenter:willPresentNotification:withCompletionHandler:]', symObjAddr: 0x1AB0, symBinAddr: 0x100005B40, symSize: 0xA4 }
-  - { offset: 0x2F85, size: 0x8, addend: 0x0, symName: '-[AppDelegate userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:]', symObjAddr: 0x1B54, symBinAddr: 0x100005BE4, symSize: 0xA0 }
-  - { offset: 0x2FE5, size: 0x8, addend: 0x0, symName: '-[AppDelegate window]', symObjAddr: 0x1BF4, symBinAddr: 0x100005C84, symSize: 0x24 }
-  - { offset: 0x301B, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWindow:]', symObjAddr: 0x1C18, symBinAddr: 0x100005CA8, symSize: 0x3C }
-  - { offset: 0x3059, size: 0x8, addend: 0x0, symName: '-[AppDelegate daemonWatchdog]', symObjAddr: 0x1C54, symBinAddr: 0x100005CE4, symSize: 0x24 }
-  - { offset: 0x308F, size: 0x8, addend: 0x0, symName: '-[AppDelegate setDaemonWatchdog:]', symObjAddr: 0x1C78, symBinAddr: 0x100005D08, symSize: 0x3C }
-  - { offset: 0x30CD, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogMissCount]', symObjAddr: 0x1CB4, symBinAddr: 0x100005D44, symSize: 0x24 }
-  - { offset: 0x3103, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWatchdogMissCount:]', symObjAddr: 0x1CD8, symBinAddr: 0x100005D68, symSize: 0x2C }
-  - { offset: 0x3141, size: 0x8, addend: 0x0, symName: '-[AppDelegate isRespawning]', symObjAddr: 0x1D04, symBinAddr: 0x100005D94, symSize: 0x2C }
-  - { offset: 0x3177, size: 0x8, addend: 0x0, symName: '-[AppDelegate setIsRespawning:]', symObjAddr: 0x1D30, symBinAddr: 0x100005DC0, symSize: 0x30 }
-  - { offset: 0x31B5, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogPaused]', symObjAddr: 0x1D60, symBinAddr: 0x100005DF0, symSize: 0x2C }
-  - { offset: 0x31EB, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWatchdogPaused:]', symObjAddr: 0x1D8C, symBinAddr: 0x100005E1C, symSize: 0x30 }
-  - { offset: 0x3229, size: 0x8, addend: 0x0, symName: '-[AppDelegate .cxx_destruct]', symObjAddr: 0x1DBC, symBinAddr: 0x100005E4C, symSize: 0x58 }
-  - { offset: 0x325B, size: 0x8, addend: 0x0, symName: ___ic_pasteboardCallback_block_invoke, symObjAddr: 0x1E14, symBinAddr: 0x100005EA4, symSize: 0xC4 }
-  - { offset: 0x32A5, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s, symObjAddr: 0x1ED8, symBinAddr: 0x100005F68, symSize: 0x58 }
-  - { offset: 0x32C9, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s, symObjAddr: 0x1F30, symBinAddr: 0x100005FC0, symSize: 0x44 }
-  - { offset: 0x32E5, size: 0x8, addend: 0x0, symName: ___ic_toastCallback_block_invoke, symObjAddr: 0x1F74, symBinAddr: 0x100006004, symSize: 0x1C0 }
-  - { offset: 0x3356, size: 0x8, addend: 0x0, symName: ___ic_toastCallback_block_invoke_2, symObjAddr: 0x2134, symBinAddr: 0x1000061C4, symSize: 0xAC }
-  - { offset: 0x6746, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100006270, symSize: 0xB0 }
-  - { offset: 0x6753, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100006270, symSize: 0xB0 }
-  - { offset: 0x677C, size: 0x8, addend: 0x0, symName: _shared.instance, symObjAddr: 0x4AA8, symBinAddr: 0x100023008, symSize: 0x0 }
-  - { offset: 0x6791, size: 0x8, addend: 0x0, symName: _shared.once, symObjAddr: 0x4AB0, symBinAddr: 0x100023010, symSize: 0x0 }
-  - { offset: 0x69A0, size: 0x8, addend: 0x0, symName: '___26+[ICDaemonLauncher shared]_block_invoke', symObjAddr: 0xB0, symBinAddr: 0x100006320, symSize: 0x4C }
-  - { offset: 0x69DD, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher killDaemon]', symObjAddr: 0xFC, symBinAddr: 0x10000636C, symSize: 0xA4 }
-  - { offset: 0x6A2B, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher spawnDaemonWithCompletion:]', symObjAddr: 0x1A0, symBinAddr: 0x100006410, symSize: 0x110 }
-  - { offset: 0x6A88, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher spawnDaemonWithCompletion:]_block_invoke', symObjAddr: 0x2B0, symBinAddr: 0x100006520, symSize: 0x3CC }
-  - { offset: 0x6B8F, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher spawnDaemonWithCompletion:]_block_invoke_2', symObjAddr: 0x67C, symBinAddr: 0x1000068EC, symSize: 0x54 }
-  - { offset: 0x6BD9, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32b, symObjAddr: 0x6D0, symBinAddr: 0x100006940, symSize: 0x38 }
-  - { offset: 0x6BFD, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40b, symObjAddr: 0x734, symBinAddr: 0x100006978, symSize: 0x58 }
-  - { offset: 0x6C21, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher checkStatusWithCompletion:]', symObjAddr: 0x7D0, symBinAddr: 0x1000069D0, symSize: 0x1D8 }
-  - { offset: 0x6C7D, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher checkStatusWithCompletion:]_block_invoke', symObjAddr: 0x9A8, symBinAddr: 0x100006BA8, symSize: 0x288 }
-  - { offset: 0x6D34, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher checkStatusWithCompletion:]_block_invoke_2', symObjAddr: 0xC30, symBinAddr: 0x100006E30, symSize: 0x58 }
-  - { offset: 0x6D8F, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher spawnToastService]', symObjAddr: 0xC88, symBinAddr: 0x100006E88, symSize: 0x3C0 }
-  - { offset: 0x780C, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100007248, symSize: 0xCD8 }
-  - { offset: 0x7825, size: 0x8, addend: 0x0, symName: _kAccent, symObjAddr: 0x4230, symBinAddr: 0x100015A48, symSize: 0x0 }
-  - { offset: 0xA980, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100007248, symSize: 0xCD8 }
-  - { offset: 0xA9E1, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewWillAppear:]', symObjAddr: 0xCD8, symBinAddr: 0x100007F20, symSize: 0x5C }
-  - { offset: 0xAA21, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController loadScripts]', symObjAddr: 0xD34, symBinAddr: 0x100007F7C, symSize: 0x174 }
-  - { offset: 0xAA7E, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke', symObjAddr: 0xEA8, symBinAddr: 0x1000080F0, symSize: 0x2D8 }
-  - { offset: 0xAB39, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke_2', symObjAddr: 0x1180, symBinAddr: 0x1000083C8, symSize: 0x78 }
-  - { offset: 0xAB76, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke.31', symObjAddr: 0x125C, symBinAddr: 0x100008440, symSize: 0x120 }
-  - { offset: 0xABC4, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController pollStatus]', symObjAddr: 0x1418, symBinAddr: 0x100008560, symSize: 0x174 }
-  - { offset: 0xAC04, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController pollStatus]_block_invoke', symObjAddr: 0x158C, symBinAddr: 0x1000086D4, symSize: 0x22C }
-  - { offset: 0xACA9, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController pollStatus]_block_invoke_2', symObjAddr: 0x17B8, symBinAddr: 0x100008900, symSize: 0x29C }
-  - { offset: 0xACF7, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController newScriptTapped]', symObjAddr: 0x1A54, symBinAddr: 0x100008B9C, symSize: 0x1E0 }
-  - { offset: 0xAD37, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke', symObjAddr: 0x1C34, symBinAddr: 0x100008D7C, symSize: 0x80 }
-  - { offset: 0xAD6D, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke_2', symObjAddr: 0x1CB4, symBinAddr: 0x100008DFC, symSize: 0x294 }
-  - { offset: 0xAE07, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke_3', symObjAddr: 0x1F48, symBinAddr: 0x100009090, symSize: 0x178 }
-  - { offset: 0xAEAF, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController runScript:]', symObjAddr: 0x20C0, symBinAddr: 0x100009208, symSize: 0x1A0 }
-  - { offset: 0xAEFD, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController runScript:]_block_invoke', symObjAddr: 0x2260, symBinAddr: 0x1000093A8, symSize: 0x28C }
-  - { offset: 0xAF88, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController runScript:]_block_invoke_2', symObjAddr: 0x24EC, symBinAddr: 0x100009634, symSize: 0x94 }
-  - { offset: 0xAFDA, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController stopScript]', symObjAddr: 0x2580, symBinAddr: 0x1000096C8, symSize: 0x150 }
-  - { offset: 0xB02B, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController stopScript]_block_invoke', symObjAddr: 0x26D0, symBinAddr: 0x100009818, symSize: 0x94 }
-  - { offset: 0xB082, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController deleteScript:]', symObjAddr: 0x2764, symBinAddr: 0x1000098AC, symSize: 0x254 }
-  - { offset: 0xB0F1, size: 0x8, addend: 0x0, symName: '___40-[ICScriptsViewController deleteScript:]_block_invoke', symObjAddr: 0x29B8, symBinAddr: 0x100009B00, symSize: 0x13C }
-  - { offset: 0xB173, size: 0x8, addend: 0x0, symName: '___40-[ICScriptsViewController deleteScript:]_block_invoke_2', symObjAddr: 0x2AF4, symBinAddr: 0x100009C3C, symSize: 0x30 }
-  - { offset: 0xB1B3, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController saveScript:content:]', symObjAddr: 0x2B24, symBinAddr: 0x100009C6C, symSize: 0x2D8 }
-  - { offset: 0xB232, size: 0x8, addend: 0x0, symName: '___46-[ICScriptsViewController saveScript:content:]_block_invoke', symObjAddr: 0x2DFC, symBinAddr: 0x100009F44, symSize: 0x13C }
-  - { offset: 0xB2B4, size: 0x8, addend: 0x0, symName: '___46-[ICScriptsViewController saveScript:content:]_block_invoke_2', symObjAddr: 0x2F38, symBinAddr: 0x10000A080, symSize: 0x30 }
-  - { offset: 0xB2F4, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:numberOfRowsInSection:]', symObjAddr: 0x2F68, symBinAddr: 0x10000A0B0, symSize: 0xAC }
-  - { offset: 0xB349, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:cellForRowAtIndexPath:]', symObjAddr: 0x3014, symBinAddr: 0x10000A15C, symSize: 0x5A8 }
-  - { offset: 0xB3BD, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:heightForRowAtIndexPath:]', symObjAddr: 0x35BC, symBinAddr: 0x10000A704, symSize: 0x78 }
-  - { offset: 0xB412, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]', symObjAddr: 0x3634, symBinAddr: 0x10000A77C, symSize: 0x498 }
-  - { offset: 0xB482, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke', symObjAddr: 0x3ACC, symBinAddr: 0x10000AC14, symSize: 0x60 }
-  - { offset: 0xB4E3, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2', symObjAddr: 0x3B2C, symBinAddr: 0x10000AC74, symSize: 0x5C }
-  - { offset: 0xB532, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.106', symObjAddr: 0x3B88, symBinAddr: 0x10000ACD0, symSize: 0x60 }
-  - { offset: 0xB593, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:]', symObjAddr: 0x3BE8, symBinAddr: 0x10000AD30, symSize: 0x2FC }
-  - { offset: 0xB609, size: 0x8, addend: 0x0, symName: '___88-[ICScriptsViewController tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:]_block_invoke', symObjAddr: 0x3EE4, symBinAddr: 0x10000B02C, symSize: 0xBC }
-  - { offset: 0xB688, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView]', symObjAddr: 0x3FA0, symBinAddr: 0x10000B0E8, symSize: 0x24 }
-  - { offset: 0xB6BE, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setTableView:]', symObjAddr: 0x3FC4, symBinAddr: 0x10000B10C, symSize: 0x3C }
-  - { offset: 0xB6FC, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController scripts]', symObjAddr: 0x4000, symBinAddr: 0x10000B148, symSize: 0x24 }
-  - { offset: 0xB732, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setScripts:]', symObjAddr: 0x4024, symBinAddr: 0x10000B16C, symSize: 0x3C }
-  - { offset: 0xB770, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController statusBadge]', symObjAddr: 0x4060, symBinAddr: 0x10000B1A8, symSize: 0x24 }
-  - { offset: 0xB7A6, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setStatusBadge:]', symObjAddr: 0x4084, symBinAddr: 0x10000B1CC, symSize: 0x3C }
-  - { offset: 0xB7E4, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController runningScript]', symObjAddr: 0x40C0, symBinAddr: 0x10000B208, symSize: 0x24 }
-  - { offset: 0xB81A, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setRunningScript:]', symObjAddr: 0x40E4, symBinAddr: 0x10000B22C, symSize: 0x3C }
-  - { offset: 0xB858, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController .cxx_destruct]', symObjAddr: 0x4120, symBinAddr: 0x10000B268, symSize: 0x88 }
-  - { offset: 0xD740, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000B2F0, symSize: 0xFF4 }
-  - { offset: 0x114DB, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000B2F0, symSize: 0xFF4 }
-  - { offset: 0x1154B, size: 0x8, addend: 0x0, symName: _UIEdgeInsetsMake, symObjAddr: 0xFF4, symBinAddr: 0x10000C2E4, symSize: 0x4C }
-  - { offset: 0x115AB, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewWillAppear:]', symObjAddr: 0x1040, symBinAddr: 0x10000C330, symSize: 0xBC }
-  - { offset: 0x115EB, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewWillDisappear:]', symObjAddr: 0x10FC, symBinAddr: 0x10000C3EC, symSize: 0x90 }
-  - { offset: 0x1162B, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController fetchLog]', symObjAddr: 0x118C, symBinAddr: 0x10000C47C, symSize: 0x1CC }
-  - { offset: 0x11691, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController fetchLog]_block_invoke', symObjAddr: 0x1358, symBinAddr: 0x10000C648, symSize: 0x230 }
-  - { offset: 0x11756, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController fetchLog]_block_invoke_2', symObjAddr: 0x1588, symBinAddr: 0x10000C878, symSize: 0x6D8 }
-  - { offset: 0x11862, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController clearLog]', symObjAddr: 0x1D60, symBinAddr: 0x10000CF50, symSize: 0x1BC }
-  - { offset: 0x118B0, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController clearLog]_block_invoke', symObjAddr: 0x1F1C, symBinAddr: 0x10000D10C, symSize: 0x13C }
-  - { offset: 0x1192B, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController clearLog]_block_invoke_2', symObjAddr: 0x2058, symBinAddr: 0x10000D248, symSize: 0x74 }
-  - { offset: 0x11968, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController togglePause]', symObjAddr: 0x20CC, symBinAddr: 0x10000D2BC, symSize: 0x22C }
-  - { offset: 0x119A8, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController logView]', symObjAddr: 0x22F8, symBinAddr: 0x10000D4E8, symSize: 0x24 }
-  - { offset: 0x119DE, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setLogView:]', symObjAddr: 0x231C, symBinAddr: 0x10000D50C, symSize: 0x3C }
-  - { offset: 0x11A1C, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController pollTimer]', symObjAddr: 0x2358, symBinAddr: 0x10000D548, symSize: 0x24 }
-  - { offset: 0x11A52, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setPollTimer:]', symObjAddr: 0x237C, symBinAddr: 0x10000D56C, symSize: 0x3C }
-  - { offset: 0x11A90, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController isPaused]', symObjAddr: 0x23B8, symBinAddr: 0x10000D5A8, symSize: 0x2C }
-  - { offset: 0x11AC6, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setIsPaused:]', symObjAddr: 0x23E4, symBinAddr: 0x10000D5D4, symSize: 0x30 }
-  - { offset: 0x11B04, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController lastLog]', symObjAddr: 0x2414, symBinAddr: 0x10000D604, symSize: 0x24 }
-  - { offset: 0x11B3A, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setLastLog:]', symObjAddr: 0x2438, symBinAddr: 0x10000D628, symSize: 0x3C }
-  - { offset: 0x11B78, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController .cxx_destruct]', symObjAddr: 0x2474, symBinAddr: 0x10000D664, symSize: 0x70 }
-  - { offset: 0x1267C, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000D6D4, symSize: 0x4B0 }
-  - { offset: 0x149E5, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000D6D4, symSize: 0x4B0 }
-  - { offset: 0x14A35, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewWillAppear:]', symObjAddr: 0x4B0, symBinAddr: 0x10000DB84, symSize: 0xB0 }
-  - { offset: 0x14A75, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewWillDisappear:]', symObjAddr: 0x560, symBinAddr: 0x10000DC34, symSize: 0x90 }
-  - { offset: 0x14AB5, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController buildUI]', symObjAddr: 0x5F0, symBinAddr: 0x10000DCC4, symSize: 0x1340 }
-  - { offset: 0x14B75, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController makeCard:value:tag:]', symObjAddr: 0x1930, symBinAddr: 0x10000F004, symSize: 0x738 }
-  - { offset: 0x14C07, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController fetchInfo]', symObjAddr: 0x2068, symBinAddr: 0x10000F73C, symSize: 0x1B0 }
-  - { offset: 0x14C72, size: 0x8, addend: 0x0, symName: '___35-[ICDeviceViewController fetchInfo]_block_invoke', symObjAddr: 0x2218, symBinAddr: 0x10000F8EC, symSize: 0x194 }
-  - { offset: 0x14CEE, size: 0x8, addend: 0x0, symName: '___35-[ICDeviceViewController fetchInfo]_block_invoke_2', symObjAddr: 0x23AC, symBinAddr: 0x10000FA80, symSize: 0x894 }
-  - { offset: 0x14DB8, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s48s, symObjAddr: 0x2C40, symBinAddr: 0x100010314, symSize: 0x70 }
-  - { offset: 0x14DDC, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s48s, symObjAddr: 0x2CB0, symBinAddr: 0x100010384, symSize: 0x54 }
-  - { offset: 0x14DF8, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController valueLabels]', symObjAddr: 0x2D68, symBinAddr: 0x1000103D8, symSize: 0x24 }
-  - { offset: 0x14E2E, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setValueLabels:]', symObjAddr: 0x2D8C, symBinAddr: 0x1000103FC, symSize: 0x3C }
-  - { offset: 0x14E6C, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController daemonStatus]', symObjAddr: 0x2DC8, symBinAddr: 0x100010438, symSize: 0x24 }
-  - { offset: 0x14EA2, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setDaemonStatus:]', symObjAddr: 0x2DEC, symBinAddr: 0x10001045C, symSize: 0x3C }
-  - { offset: 0x14EE0, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController refreshTimer]', symObjAddr: 0x2E28, symBinAddr: 0x100010498, symSize: 0x24 }
-  - { offset: 0x14F16, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setRefreshTimer:]', symObjAddr: 0x2E4C, symBinAddr: 0x1000104BC, symSize: 0x3C }
-  - { offset: 0x14F54, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController .cxx_destruct]', symObjAddr: 0x2E88, symBinAddr: 0x1000104F8, symSize: 0x70 }
-  - { offset: 0x164AF, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100010568, symSize: 0xBA0 }
-  - { offset: 0x194AF, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100010568, symSize: 0xBA0 }
-  - { offset: 0x194F2, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController checkDaemon]', symObjAddr: 0xBA0, symBinAddr: 0x100011108, symSize: 0xC0 }
-  - { offset: 0x19524, size: 0x8, addend: 0x0, symName: '___39-[ICSettingsViewController checkDaemon]_block_invoke', symObjAddr: 0xC60, symBinAddr: 0x1000111C8, symSize: 0x218 }
-  - { offset: 0x1957D, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController numberOfSectionsInTableView:]', symObjAddr: 0xEDC, symBinAddr: 0x1000113E0, symSize: 0x50 }
-  - { offset: 0x195C1, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:numberOfRowsInSection:]', symObjAddr: 0xF2C, symBinAddr: 0x100011430, symSize: 0xCC }
-  - { offset: 0x19613, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:titleForHeaderInSection:]', symObjAddr: 0xFF8, symBinAddr: 0x1000114FC, symSize: 0xFC }
-  - { offset: 0x19665, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:titleForFooterInSection:]', symObjAddr: 0x10F4, symBinAddr: 0x1000115F8, symSize: 0xDC }
-  - { offset: 0x196B7, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:cellForRowAtIndexPath:]', symObjAddr: 0x11D0, symBinAddr: 0x1000116D4, symSize: 0x8D4 }
-  - { offset: 0x19717, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:heightForRowAtIndexPath:]', symObjAddr: 0x1AA4, symBinAddr: 0x100011FA8, symSize: 0x78 }
-  - { offset: 0x19786, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]', symObjAddr: 0x1B1C, symBinAddr: 0x100012020, symSize: 0x760 }
-  - { offset: 0x1984F, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke', symObjAddr: 0x227C, symBinAddr: 0x100012780, symSize: 0x1D0 }
-  - { offset: 0x198CB, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2', symObjAddr: 0x244C, symBinAddr: 0x100012950, symSize: 0x104 }
-  - { offset: 0x19919, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_3', symObjAddr: 0x2550, symBinAddr: 0x100012A54, symSize: 0x100 }
-  - { offset: 0x19989, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_4', symObjAddr: 0x2650, symBinAddr: 0x100012B54, symSize: 0x14C }
-  - { offset: 0x19A01, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.85', symObjAddr: 0x2838, symBinAddr: 0x100012CA0, symSize: 0x1A4 }
-  - { offset: 0x19A82, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2.86', symObjAddr: 0x29DC, symBinAddr: 0x100012E44, symSize: 0x30 }
-  - { offset: 0x19AC2, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.93', symObjAddr: 0x2A0C, symBinAddr: 0x100012E74, symSize: 0xAC }
-  - { offset: 0x19B0E, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView]', symObjAddr: 0x2AB8, symBinAddr: 0x100012F20, symSize: 0x24 }
-  - { offset: 0x19B44, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController setTableView:]', symObjAddr: 0x2ADC, symBinAddr: 0x100012F44, symSize: 0x3C }
-  - { offset: 0x19B82, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController daemonBadge]', symObjAddr: 0x2B18, symBinAddr: 0x100012F80, symSize: 0x24 }
-  - { offset: 0x19BB8, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController setDaemonBadge:]', symObjAddr: 0x2B3C, symBinAddr: 0x100012FA4, symSize: 0x3C }
-  - { offset: 0x19BF6, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController .cxx_destruct]', symObjAddr: 0x2B78, symBinAddr: 0x100012FE0, symSize: 0x58 }
+  - { offset: 0x2AE3, size: 0x8, addend: 0x0, symName: '-[AppDelegate registerIPCListeners]', symObjAddr: 0xEF0, symBinAddr: 0x100004F80, symSize: 0x58 }
+  - { offset: 0x2B23, size: 0x8, addend: 0x0, symName: _ic_pasteboardCallback, symObjAddr: 0xF48, symBinAddr: 0x100004FD8, symSize: 0x1D4 }
+  - { offset: 0x2BBD, size: 0x8, addend: 0x0, symName: '-[AppDelegate startDaemonWatchdog]', symObjAddr: 0x111C, symBinAddr: 0x1000051AC, symSize: 0xF8 }
+  - { offset: 0x2BEF, size: 0x8, addend: 0x0, symName: '-[AppDelegate stopDaemonWatchdog]', symObjAddr: 0x1214, symBinAddr: 0x1000052A4, symSize: 0x60 }
+  - { offset: 0x2C21, size: 0x8, addend: 0x0, symName: '-[AppDelegate pauseWatchdog]', symObjAddr: 0x1274, symBinAddr: 0x100005304, symSize: 0x40 }
+  - { offset: 0x2C53, size: 0x8, addend: 0x0, symName: '-[AppDelegate resumeWatchdog]', symObjAddr: 0x12B4, symBinAddr: 0x100005344, symSize: 0x68 }
+  - { offset: 0x2C85, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogTick]', symObjAddr: 0x131C, symBinAddr: 0x1000053AC, symSize: 0xF0 }
+  - { offset: 0x2CB7, size: 0x8, addend: 0x0, symName: '___27-[AppDelegate watchdogTick]_block_invoke', symObjAddr: 0x140C, symBinAddr: 0x10000549C, symSize: 0xF0 }
+  - { offset: 0x2D10, size: 0x8, addend: 0x0, symName: '-[AppDelegate respawnDaemon]', symObjAddr: 0x14FC, symBinAddr: 0x10000558C, symSize: 0x10C }
+  - { offset: 0x2D42, size: 0x8, addend: 0x0, symName: '___28-[AppDelegate respawnDaemon]_block_invoke', symObjAddr: 0x1608, symBinAddr: 0x100005698, symSize: 0x98 }
+  - { offset: 0x2D8E, size: 0x8, addend: 0x0, symName: '-[AppDelegate applicationDidBecomeActive:]', symObjAddr: 0x16A0, symBinAddr: 0x100005730, symSize: 0x108 }
+  - { offset: 0x2DD0, size: 0x8, addend: 0x0, symName: '___42-[AppDelegate applicationDidBecomeActive:]_block_invoke', symObjAddr: 0x17A8, symBinAddr: 0x100005838, symSize: 0x94 }
+  - { offset: 0x2E2E, size: 0x8, addend: 0x0, symName: '-[AppDelegate applicationDidEnterBackground:]', symObjAddr: 0x183C, symBinAddr: 0x1000058CC, symSize: 0x58 }
+  - { offset: 0x2E70, size: 0x8, addend: 0x0, symName: '-[AppDelegate userNotificationCenter:willPresentNotification:withCompletionHandler:]', symObjAddr: 0x1894, symBinAddr: 0x100005924, symSize: 0xA4 }
+  - { offset: 0x2ED0, size: 0x8, addend: 0x0, symName: '-[AppDelegate userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:]', symObjAddr: 0x1938, symBinAddr: 0x1000059C8, symSize: 0xA0 }
+  - { offset: 0x2F30, size: 0x8, addend: 0x0, symName: '-[AppDelegate window]', symObjAddr: 0x19D8, symBinAddr: 0x100005A68, symSize: 0x24 }
+  - { offset: 0x2F66, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWindow:]', symObjAddr: 0x19FC, symBinAddr: 0x100005A8C, symSize: 0x3C }
+  - { offset: 0x2FA4, size: 0x8, addend: 0x0, symName: '-[AppDelegate daemonWatchdog]', symObjAddr: 0x1A38, symBinAddr: 0x100005AC8, symSize: 0x24 }
+  - { offset: 0x2FDA, size: 0x8, addend: 0x0, symName: '-[AppDelegate setDaemonWatchdog:]', symObjAddr: 0x1A5C, symBinAddr: 0x100005AEC, symSize: 0x3C }
+  - { offset: 0x3018, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogMissCount]', symObjAddr: 0x1A98, symBinAddr: 0x100005B28, symSize: 0x24 }
+  - { offset: 0x304E, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWatchdogMissCount:]', symObjAddr: 0x1ABC, symBinAddr: 0x100005B4C, symSize: 0x2C }
+  - { offset: 0x308C, size: 0x8, addend: 0x0, symName: '-[AppDelegate isRespawning]', symObjAddr: 0x1AE8, symBinAddr: 0x100005B78, symSize: 0x2C }
+  - { offset: 0x30C2, size: 0x8, addend: 0x0, symName: '-[AppDelegate setIsRespawning:]', symObjAddr: 0x1B14, symBinAddr: 0x100005BA4, symSize: 0x30 }
+  - { offset: 0x3100, size: 0x8, addend: 0x0, symName: '-[AppDelegate watchdogPaused]', symObjAddr: 0x1B44, symBinAddr: 0x100005BD4, symSize: 0x2C }
+  - { offset: 0x3136, size: 0x8, addend: 0x0, symName: '-[AppDelegate setWatchdogPaused:]', symObjAddr: 0x1B70, symBinAddr: 0x100005C00, symSize: 0x30 }
+  - { offset: 0x3174, size: 0x8, addend: 0x0, symName: '-[AppDelegate .cxx_destruct]', symObjAddr: 0x1BA0, symBinAddr: 0x100005C30, symSize: 0x58 }
+  - { offset: 0x31A6, size: 0x8, addend: 0x0, symName: ___ic_pasteboardCallback_block_invoke, symObjAddr: 0x1BF8, symBinAddr: 0x100005C88, symSize: 0xC4 }
+  - { offset: 0x31F0, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s, symObjAddr: 0x1CBC, symBinAddr: 0x100005D4C, symSize: 0x58 }
+  - { offset: 0x3214, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s, symObjAddr: 0x1D14, symBinAddr: 0x100005DA4, symSize: 0x44 }
+  - { offset: 0x642B, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100005DE8, symSize: 0xB0 }
+  - { offset: 0x6438, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100005DE8, symSize: 0xB0 }
+  - { offset: 0x6461, size: 0x8, addend: 0x0, symName: _shared.instance, symObjAddr: 0x4AA8, symBinAddr: 0x100022FB0, symSize: 0x0 }
+  - { offset: 0x6476, size: 0x8, addend: 0x0, symName: _shared.once, symObjAddr: 0x4AB0, symBinAddr: 0x100022FB8, symSize: 0x0 }
+  - { offset: 0x6685, size: 0x8, addend: 0x0, symName: '___26+[ICDaemonLauncher shared]_block_invoke', symObjAddr: 0xB0, symBinAddr: 0x100005E98, symSize: 0x4C }
+  - { offset: 0x66C2, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher killDaemon]', symObjAddr: 0xFC, symBinAddr: 0x100005EE4, symSize: 0xA4 }
+  - { offset: 0x6710, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher spawnDaemonWithCompletion:]', symObjAddr: 0x1A0, symBinAddr: 0x100005F88, symSize: 0x110 }
+  - { offset: 0x676D, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher spawnDaemonWithCompletion:]_block_invoke', symObjAddr: 0x2B0, symBinAddr: 0x100006098, symSize: 0x3CC }
+  - { offset: 0x6874, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher spawnDaemonWithCompletion:]_block_invoke_2', symObjAddr: 0x67C, symBinAddr: 0x100006464, symSize: 0x54 }
+  - { offset: 0x68BE, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32b, symObjAddr: 0x6D0, symBinAddr: 0x1000064B8, symSize: 0x38 }
+  - { offset: 0x68E2, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40b, symObjAddr: 0x734, symBinAddr: 0x1000064F0, symSize: 0x58 }
+  - { offset: 0x6906, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher checkStatusWithCompletion:]', symObjAddr: 0x7D0, symBinAddr: 0x100006548, symSize: 0x1D8 }
+  - { offset: 0x6962, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher checkStatusWithCompletion:]_block_invoke', symObjAddr: 0x9A8, symBinAddr: 0x100006720, symSize: 0x288 }
+  - { offset: 0x6A19, size: 0x8, addend: 0x0, symName: '___46-[ICDaemonLauncher checkStatusWithCompletion:]_block_invoke_2', symObjAddr: 0xC30, symBinAddr: 0x1000069A8, symSize: 0x58 }
+  - { offset: 0x6A74, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher spawnToastService]', symObjAddr: 0xC88, symBinAddr: 0x100006A00, symSize: 0x3C0 }
+  - { offset: 0x74F1, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100006DC0, symSize: 0xCD8 }
+  - { offset: 0x750A, size: 0x8, addend: 0x0, symName: _kAccent, symObjAddr: 0x4230, symBinAddr: 0x1000154A8, symSize: 0x0 }
+  - { offset: 0xA665, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x100006DC0, symSize: 0xCD8 }
+  - { offset: 0xA6C6, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController viewWillAppear:]', symObjAddr: 0xCD8, symBinAddr: 0x100007A98, symSize: 0x5C }
+  - { offset: 0xA706, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController loadScripts]', symObjAddr: 0xD34, symBinAddr: 0x100007AF4, symSize: 0x174 }
+  - { offset: 0xA763, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke', symObjAddr: 0xEA8, symBinAddr: 0x100007C68, symSize: 0x2D8 }
+  - { offset: 0xA81E, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke_2', symObjAddr: 0x1180, symBinAddr: 0x100007F40, symSize: 0x78 }
+  - { offset: 0xA85B, size: 0x8, addend: 0x0, symName: '___38-[ICScriptsViewController loadScripts]_block_invoke.31', symObjAddr: 0x125C, symBinAddr: 0x100007FB8, symSize: 0x120 }
+  - { offset: 0xA8A9, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController pollStatus]', symObjAddr: 0x1418, symBinAddr: 0x1000080D8, symSize: 0x174 }
+  - { offset: 0xA8E9, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController pollStatus]_block_invoke', symObjAddr: 0x158C, symBinAddr: 0x10000824C, symSize: 0x22C }
+  - { offset: 0xA98E, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController pollStatus]_block_invoke_2', symObjAddr: 0x17B8, symBinAddr: 0x100008478, symSize: 0x29C }
+  - { offset: 0xA9DC, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController newScriptTapped]', symObjAddr: 0x1A54, symBinAddr: 0x100008714, symSize: 0x1E0 }
+  - { offset: 0xAA1C, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke', symObjAddr: 0x1C34, symBinAddr: 0x1000088F4, symSize: 0x80 }
+  - { offset: 0xAA52, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke_2', symObjAddr: 0x1CB4, symBinAddr: 0x100008974, symSize: 0x294 }
+  - { offset: 0xAAEC, size: 0x8, addend: 0x0, symName: '___42-[ICScriptsViewController newScriptTapped]_block_invoke_3', symObjAddr: 0x1F48, symBinAddr: 0x100008C08, symSize: 0x178 }
+  - { offset: 0xAB94, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController runScript:]', symObjAddr: 0x20C0, symBinAddr: 0x100008D80, symSize: 0x1A0 }
+  - { offset: 0xABE2, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController runScript:]_block_invoke', symObjAddr: 0x2260, symBinAddr: 0x100008F20, symSize: 0x28C }
+  - { offset: 0xAC6D, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController runScript:]_block_invoke_2', symObjAddr: 0x24EC, symBinAddr: 0x1000091AC, symSize: 0x94 }
+  - { offset: 0xACBF, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController stopScript]', symObjAddr: 0x2580, symBinAddr: 0x100009240, symSize: 0x150 }
+  - { offset: 0xAD10, size: 0x8, addend: 0x0, symName: '___37-[ICScriptsViewController stopScript]_block_invoke', symObjAddr: 0x26D0, symBinAddr: 0x100009390, symSize: 0x94 }
+  - { offset: 0xAD67, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController deleteScript:]', symObjAddr: 0x2764, symBinAddr: 0x100009424, symSize: 0x254 }
+  - { offset: 0xADD6, size: 0x8, addend: 0x0, symName: '___40-[ICScriptsViewController deleteScript:]_block_invoke', symObjAddr: 0x29B8, symBinAddr: 0x100009678, symSize: 0x13C }
+  - { offset: 0xAE58, size: 0x8, addend: 0x0, symName: '___40-[ICScriptsViewController deleteScript:]_block_invoke_2', symObjAddr: 0x2AF4, symBinAddr: 0x1000097B4, symSize: 0x30 }
+  - { offset: 0xAE98, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController saveScript:content:]', symObjAddr: 0x2B24, symBinAddr: 0x1000097E4, symSize: 0x2D8 }
+  - { offset: 0xAF17, size: 0x8, addend: 0x0, symName: '___46-[ICScriptsViewController saveScript:content:]_block_invoke', symObjAddr: 0x2DFC, symBinAddr: 0x100009ABC, symSize: 0x13C }
+  - { offset: 0xAF99, size: 0x8, addend: 0x0, symName: '___46-[ICScriptsViewController saveScript:content:]_block_invoke_2', symObjAddr: 0x2F38, symBinAddr: 0x100009BF8, symSize: 0x30 }
+  - { offset: 0xAFD9, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:numberOfRowsInSection:]', symObjAddr: 0x2F68, symBinAddr: 0x100009C28, symSize: 0xAC }
+  - { offset: 0xB02E, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:cellForRowAtIndexPath:]', symObjAddr: 0x3014, symBinAddr: 0x100009CD4, symSize: 0x5A8 }
+  - { offset: 0xB0A2, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:heightForRowAtIndexPath:]', symObjAddr: 0x35BC, symBinAddr: 0x10000A27C, symSize: 0x78 }
+  - { offset: 0xB0F7, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]', symObjAddr: 0x3634, symBinAddr: 0x10000A2F4, symSize: 0x498 }
+  - { offset: 0xB167, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke', symObjAddr: 0x3ACC, symBinAddr: 0x10000A78C, symSize: 0x60 }
+  - { offset: 0xB1C8, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2', symObjAddr: 0x3B2C, symBinAddr: 0x10000A7EC, symSize: 0x5C }
+  - { offset: 0xB217, size: 0x8, addend: 0x0, symName: '___61-[ICScriptsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.106', symObjAddr: 0x3B88, symBinAddr: 0x10000A848, symSize: 0x60 }
+  - { offset: 0xB278, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:]', symObjAddr: 0x3BE8, symBinAddr: 0x10000A8A8, symSize: 0x2FC }
+  - { offset: 0xB2EE, size: 0x8, addend: 0x0, symName: '___88-[ICScriptsViewController tableView:trailingSwipeActionsConfigurationForRowAtIndexPath:]_block_invoke', symObjAddr: 0x3EE4, symBinAddr: 0x10000ABA4, symSize: 0xBC }
+  - { offset: 0xB36D, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController tableView]', symObjAddr: 0x3FA0, symBinAddr: 0x10000AC60, symSize: 0x24 }
+  - { offset: 0xB3A3, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setTableView:]', symObjAddr: 0x3FC4, symBinAddr: 0x10000AC84, symSize: 0x3C }
+  - { offset: 0xB3E1, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController scripts]', symObjAddr: 0x4000, symBinAddr: 0x10000ACC0, symSize: 0x24 }
+  - { offset: 0xB417, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setScripts:]', symObjAddr: 0x4024, symBinAddr: 0x10000ACE4, symSize: 0x3C }
+  - { offset: 0xB455, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController statusBadge]', symObjAddr: 0x4060, symBinAddr: 0x10000AD20, symSize: 0x24 }
+  - { offset: 0xB48B, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setStatusBadge:]', symObjAddr: 0x4084, symBinAddr: 0x10000AD44, symSize: 0x3C }
+  - { offset: 0xB4C9, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController runningScript]', symObjAddr: 0x40C0, symBinAddr: 0x10000AD80, symSize: 0x24 }
+  - { offset: 0xB4FF, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController setRunningScript:]', symObjAddr: 0x40E4, symBinAddr: 0x10000ADA4, symSize: 0x3C }
+  - { offset: 0xB53D, size: 0x8, addend: 0x0, symName: '-[ICScriptsViewController .cxx_destruct]', symObjAddr: 0x4120, symBinAddr: 0x10000ADE0, symSize: 0x88 }
+  - { offset: 0xD425, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000AE68, symSize: 0xFF4 }
+  - { offset: 0x111C0, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000AE68, symSize: 0xFF4 }
+  - { offset: 0x11230, size: 0x8, addend: 0x0, symName: _UIEdgeInsetsMake, symObjAddr: 0xFF4, symBinAddr: 0x10000BE5C, symSize: 0x4C }
+  - { offset: 0x11290, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewWillAppear:]', symObjAddr: 0x1040, symBinAddr: 0x10000BEA8, symSize: 0xBC }
+  - { offset: 0x112D0, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController viewWillDisappear:]', symObjAddr: 0x10FC, symBinAddr: 0x10000BF64, symSize: 0x90 }
+  - { offset: 0x11310, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController fetchLog]', symObjAddr: 0x118C, symBinAddr: 0x10000BFF4, symSize: 0x1CC }
+  - { offset: 0x11376, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController fetchLog]_block_invoke', symObjAddr: 0x1358, symBinAddr: 0x10000C1C0, symSize: 0x230 }
+  - { offset: 0x1143B, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController fetchLog]_block_invoke_2', symObjAddr: 0x1588, symBinAddr: 0x10000C3F0, symSize: 0x6D8 }
+  - { offset: 0x11547, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController clearLog]', symObjAddr: 0x1D60, symBinAddr: 0x10000CAC8, symSize: 0x1BC }
+  - { offset: 0x11595, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController clearLog]_block_invoke', symObjAddr: 0x1F1C, symBinAddr: 0x10000CC84, symSize: 0x13C }
+  - { offset: 0x11610, size: 0x8, addend: 0x0, symName: '___35-[ICConsoleViewController clearLog]_block_invoke_2', symObjAddr: 0x2058, symBinAddr: 0x10000CDC0, symSize: 0x74 }
+  - { offset: 0x1164D, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController togglePause]', symObjAddr: 0x20CC, symBinAddr: 0x10000CE34, symSize: 0x22C }
+  - { offset: 0x1168D, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController logView]', symObjAddr: 0x22F8, symBinAddr: 0x10000D060, symSize: 0x24 }
+  - { offset: 0x116C3, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setLogView:]', symObjAddr: 0x231C, symBinAddr: 0x10000D084, symSize: 0x3C }
+  - { offset: 0x11701, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController pollTimer]', symObjAddr: 0x2358, symBinAddr: 0x10000D0C0, symSize: 0x24 }
+  - { offset: 0x11737, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setPollTimer:]', symObjAddr: 0x237C, symBinAddr: 0x10000D0E4, symSize: 0x3C }
+  - { offset: 0x11775, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController isPaused]', symObjAddr: 0x23B8, symBinAddr: 0x10000D120, symSize: 0x2C }
+  - { offset: 0x117AB, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setIsPaused:]', symObjAddr: 0x23E4, symBinAddr: 0x10000D14C, symSize: 0x30 }
+  - { offset: 0x117E9, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController lastLog]', symObjAddr: 0x2414, symBinAddr: 0x10000D17C, symSize: 0x24 }
+  - { offset: 0x1181F, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController setLastLog:]', symObjAddr: 0x2438, symBinAddr: 0x10000D1A0, symSize: 0x3C }
+  - { offset: 0x1185D, size: 0x8, addend: 0x0, symName: '-[ICConsoleViewController .cxx_destruct]', symObjAddr: 0x2474, symBinAddr: 0x10000D1DC, symSize: 0x70 }
+  - { offset: 0x12361, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000D24C, symSize: 0x4B0 }
+  - { offset: 0x146CA, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x10000D24C, symSize: 0x4B0 }
+  - { offset: 0x1471A, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewWillAppear:]', symObjAddr: 0x4B0, symBinAddr: 0x10000D6FC, symSize: 0xB0 }
+  - { offset: 0x1475A, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController viewWillDisappear:]', symObjAddr: 0x560, symBinAddr: 0x10000D7AC, symSize: 0x90 }
+  - { offset: 0x1479A, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController buildUI]', symObjAddr: 0x5F0, symBinAddr: 0x10000D83C, symSize: 0x1340 }
+  - { offset: 0x1485A, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController makeCard:value:tag:]', symObjAddr: 0x1930, symBinAddr: 0x10000EB7C, symSize: 0x738 }
+  - { offset: 0x148EC, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController fetchInfo]', symObjAddr: 0x2068, symBinAddr: 0x10000F2B4, symSize: 0x1B0 }
+  - { offset: 0x14957, size: 0x8, addend: 0x0, symName: '___35-[ICDeviceViewController fetchInfo]_block_invoke', symObjAddr: 0x2218, symBinAddr: 0x10000F464, symSize: 0x194 }
+  - { offset: 0x149D3, size: 0x8, addend: 0x0, symName: '___35-[ICDeviceViewController fetchInfo]_block_invoke_2', symObjAddr: 0x23AC, symBinAddr: 0x10000F5F8, symSize: 0x894 }
+  - { offset: 0x14A9D, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s48s, symObjAddr: 0x2C40, symBinAddr: 0x10000FE8C, symSize: 0x70 }
+  - { offset: 0x14AC1, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s48s, symObjAddr: 0x2CB0, symBinAddr: 0x10000FEFC, symSize: 0x54 }
+  - { offset: 0x14ADD, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController valueLabels]', symObjAddr: 0x2D68, symBinAddr: 0x10000FF50, symSize: 0x24 }
+  - { offset: 0x14B13, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setValueLabels:]', symObjAddr: 0x2D8C, symBinAddr: 0x10000FF74, symSize: 0x3C }
+  - { offset: 0x14B51, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController daemonStatus]', symObjAddr: 0x2DC8, symBinAddr: 0x10000FFB0, symSize: 0x24 }
+  - { offset: 0x14B87, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setDaemonStatus:]', symObjAddr: 0x2DEC, symBinAddr: 0x10000FFD4, symSize: 0x3C }
+  - { offset: 0x14BC5, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController refreshTimer]', symObjAddr: 0x2E28, symBinAddr: 0x100010010, symSize: 0x24 }
+  - { offset: 0x14BFB, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController setRefreshTimer:]', symObjAddr: 0x2E4C, symBinAddr: 0x100010034, symSize: 0x3C }
+  - { offset: 0x14C39, size: 0x8, addend: 0x0, symName: '-[ICDeviceViewController .cxx_destruct]', symObjAddr: 0x2E88, symBinAddr: 0x100010070, symSize: 0x70 }
+  - { offset: 0x16194, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x1000100E0, symSize: 0xBA0 }
+  - { offset: 0x19194, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController viewDidLoad]', symObjAddr: 0x0, symBinAddr: 0x1000100E0, symSize: 0xBA0 }
+  - { offset: 0x191D7, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController checkDaemon]', symObjAddr: 0xBA0, symBinAddr: 0x100010C80, symSize: 0xC0 }
+  - { offset: 0x19209, size: 0x8, addend: 0x0, symName: '___39-[ICSettingsViewController checkDaemon]_block_invoke', symObjAddr: 0xC60, symBinAddr: 0x100010D40, symSize: 0x218 }
+  - { offset: 0x19262, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController numberOfSectionsInTableView:]', symObjAddr: 0xEDC, symBinAddr: 0x100010F58, symSize: 0x50 }
+  - { offset: 0x192A6, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:numberOfRowsInSection:]', symObjAddr: 0xF2C, symBinAddr: 0x100010FA8, symSize: 0xCC }
+  - { offset: 0x192F8, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:titleForHeaderInSection:]', symObjAddr: 0xFF8, symBinAddr: 0x100011074, symSize: 0xFC }
+  - { offset: 0x1934A, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:titleForFooterInSection:]', symObjAddr: 0x10F4, symBinAddr: 0x100011170, symSize: 0xDC }
+  - { offset: 0x1939C, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:cellForRowAtIndexPath:]', symObjAddr: 0x11D0, symBinAddr: 0x10001124C, symSize: 0x8D4 }
+  - { offset: 0x193FC, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:heightForRowAtIndexPath:]', symObjAddr: 0x1AA4, symBinAddr: 0x100011B20, symSize: 0x78 }
+  - { offset: 0x1946B, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]', symObjAddr: 0x1B1C, symBinAddr: 0x100011B98, symSize: 0x760 }
+  - { offset: 0x19534, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke', symObjAddr: 0x227C, symBinAddr: 0x1000122F8, symSize: 0x1D0 }
+  - { offset: 0x195B0, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2', symObjAddr: 0x244C, symBinAddr: 0x1000124C8, symSize: 0x104 }
+  - { offset: 0x195FE, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_3', symObjAddr: 0x2550, symBinAddr: 0x1000125CC, symSize: 0x100 }
+  - { offset: 0x1966E, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_4', symObjAddr: 0x2650, symBinAddr: 0x1000126CC, symSize: 0x14C }
+  - { offset: 0x196E6, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.85', symObjAddr: 0x2838, symBinAddr: 0x100012818, symSize: 0x1A4 }
+  - { offset: 0x19767, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke_2.86', symObjAddr: 0x29DC, symBinAddr: 0x1000129BC, symSize: 0x30 }
+  - { offset: 0x197A7, size: 0x8, addend: 0x0, symName: '___62-[ICSettingsViewController tableView:didSelectRowAtIndexPath:]_block_invoke.93', symObjAddr: 0x2A0C, symBinAddr: 0x1000129EC, symSize: 0xAC }
+  - { offset: 0x197F3, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController tableView]', symObjAddr: 0x2AB8, symBinAddr: 0x100012A98, symSize: 0x24 }
+  - { offset: 0x19829, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController setTableView:]', symObjAddr: 0x2ADC, symBinAddr: 0x100012ABC, symSize: 0x3C }
+  - { offset: 0x19867, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController daemonBadge]', symObjAddr: 0x2B18, symBinAddr: 0x100012AF8, symSize: 0x24 }
+  - { offset: 0x1989D, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController setDaemonBadge:]', symObjAddr: 0x2B3C, symBinAddr: 0x100012B1C, symSize: 0x3C }
+  - { offset: 0x198DB, size: 0x8, addend: 0x0, symName: '-[ICSettingsViewController .cxx_destruct]', symObjAddr: 0x2B78, symBinAddr: 0x100012B58, symSize: 0x58 }
 ...
