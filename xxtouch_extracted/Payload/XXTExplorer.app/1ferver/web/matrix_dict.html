@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta http-equiv="X-UA-Compatible" content="edge" />
+  <meta name="renderer" content="webkit" />
+  <title>XXTouch</title>
+  <link rel="apple-touch-icon" href="/xxtouch.png" />
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="mdui/js/mdui.min.js"></script>
+  <script type="text/javascript" src="js/clipboard.min.js"></script>
+  <script type="text/javascript" src="js/xxtouch_web.js"></script>
+  <script type="text/javascript" src="js/pako.min.js"></script>
+  <script type="text/javascript" src="js/matrix_helpers.js"></script>
+  <script type="text/javascript" src="matrix_dict.js"></script>
+  <link rel="stylesheet" href="mdui/css/mdui.min.css" />
+  <link rel="stylesheet" href="css/xxtouch_web.css" />
+  <link rel="stylesheet" href="css/matrix_common.css" />
+  <link rel="icon" href="/xxtouch.png" type="image/png" />
+  <style>
+    /* 页面特定样式 - 通用样式已移至 matrix_common.css */
+    html, body { overflow: hidden; }
+    .matrix-container { overflow: hidden; gap: 4px; padding: 6px; }
+    .matrix-panel { padding: 8px; }
+    .matrix-panel h3 { margin-bottom: 6px; }
+    .matrix-magnifier { margin-bottom: 8px; padding-bottom: 7px; }
+    .matrix-field { margin-bottom: 6px; }
+    .matrix-stats { margin-bottom: 6px; }
+    .matrix-list-section { margin-top: 6px; padding-top: 6px; }
+
+    /* 布局切换相关 */
+    .matrix-panel-left.layout-horizontal .matrix-canvas-grid { flex-direction: row; align-items: stretch; }
+    .matrix-panel-left.layout-horizontal .matrix-canvas-item { height: 100%; min-width: 0; }
+    .matrix-panel-left.layout-horizontal .matrix-canvas-wrapper { height: 100%; min-height: 320px; }
+    .matrix-panel-left.layout-vertical .matrix-canvas-grid { flex-direction: column; }
+    .matrix-canvas-wrapper.drag-over { border: 2px dashed var(--md-ink); background-color: rgba(60, 150, 222, 0.1); }
+    .matrix-canvas-grid { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
+    .matrix-canvas-item { flex: 1; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+    .matrix-canvas-item small { color: var(--md-muted); font-size: 12px; }
+    .matrix-canvas-item-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .matrix-canvas-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .matrix-modifier-btn { min-height: 32px; padding: 5px 10px; font-size: 12px; line-height: 1.2; }
+    .matrix-modifier-btn.is-active {
+      background: linear-gradient(120deg, #3c96de 0%, #5aabe8 100%);
+      color: #fff;
+      border-color: rgba(60, 150, 222, 0.88);
+      box-shadow: 0 8px 20px rgba(60, 150, 222, 0.25);
+    }
+    #md-stageOriginal, #md-stageBinary, #md-bitPreview { touch-action: none; }
+    #md-colorPickPopover {
+      position: fixed;
+      display: none;
+      width: 300px;
+      max-width: calc(100vw - 16px);
+      background: #fff;
+      border: 1px solid var(--md-border);
+      border-radius: 12px;
+      box-shadow: 0 14px 34px rgba(17, 24, 39, 0.26);
+      z-index: 2100;
+      padding: 12px;
+      box-sizing: border-box;
+      color: var(--md-text);
+    }
+    #md-colorPickPopover.is-open { display: block; }
+    .matrix-color-pick-head {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .matrix-color-pick-swatch {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+      background: #666;
+    }
+    .matrix-color-pick-title {
+      font-family: var(--md-mono);
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 2px;
+    }
+    .matrix-color-pick-sub {
+      font-size: 11px;
+      color: var(--md-muted);
+      margin: 0;
+      line-height: 1.35;
+    }
+    .matrix-color-pick-row {
+      display: grid;
+      grid-template-columns: 18px 1fr 70px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .matrix-color-pick-row:last-of-type { margin-bottom: 2px; }
+    .matrix-color-pick-row label {
+      font-family: var(--md-mono);
+      font-size: 12px;
+      color: var(--md-muted);
+      font-weight: 600;
+    }
+    .matrix-color-pick-row input[type="range"] {
+      width: 100%;
+      margin: 0;
+      min-height: 32px;
+    }
+    .matrix-color-pick-row input[type="number"] {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--md-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: var(--md-mono);
+      font-size: 13px;
+      text-align: center;
+      background: #f8fcfe;
+      color: var(--md-text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      box-sizing: border-box;
+      user-select: text;
+    }
+    .matrix-color-pick-row input[type="number"]:focus {
+      outline: none;
+      border-color: var(--md-ink);
+      box-shadow: 0 0 0 2px rgba(60, 150, 222, 0.15);
+    }
+    .matrix-color-pick-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .matrix-color-pick-actions .matrix-btn {
+      min-height: 34px;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+
+    /* 二值化颜色列表（页面特定扩展） */
+    .matrix-color-list { max-height: 280px; overflow-y: auto; border: 1px solid var(--md-border); border-radius: 8px; background: #f8fcfe; margin-bottom: 6px; }
+    .matrix-color-list:empty { display: none; }
+    .matrix-color-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--md-border); font-size: 12px; font-family: var(--md-mono); transition: background 0.1s; cursor: pointer; }
+    .matrix-color-item:last-child { border-bottom: none; }
+    .matrix-color-item:hover { background: #eaf4fa; }
+    .matrix-color-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--md-ink); flex-shrink: 0; }
+    .matrix-color-item .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.15); flex-shrink: 0; }
+    .matrix-color-item .color-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .matrix-color-item .delete-btn { opacity: 0; background: transparent; border: none; color: var(--md-muted); padding: 0 4px; font-size: 14px; cursor: pointer; line-height: 1; transition: opacity 0.1s, color 0.1s; }
+    .matrix-color-item:hover .delete-btn { opacity: 1; }
+    .matrix-color-item .delete-btn:hover { color: var(--md-accent); }
+    .matrix-color-list-actions { display: flex; gap: 6px; margin-bottom: 6px; }
+    .matrix-color-list-actions button { padding: 4px 8px; font-size: 11px; }
+
+    /* 表格列样式 */
+    .matrix-table td:first-child { font-weight: 500; font-size: 13px; }
+    .matrix-table td:nth-child(2) { font-family: var(--md-mono); color: var(--md-muted); }
+    .matrix-table td:nth-child(3) { font-family: var(--md-mono); font-size: 10px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+
+<body class="mdui-drawer-body-left mdui-appbar-with-toolbar mdui-theme-primary-blue mdui-theme-accent-deep-orange">
+  <div class="mdui-drawer" id="main-drawer"></div>
+  <header class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-xxtouch-color">
+      <span class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-drawer="{target: '#main-drawer'}"><i
+          class="mdui-icon material-icons">&#xe5d2;</i></span>
+      <a href="./index.html" class="mdui-typo-headline mdui-hidden-xs">XXTouch</a>
+      <a href="" class="mdui-typo-title">点阵字库制作</a>
+      <div class="mdui-toolbar-spacer"></div>
+      <div href="javascript:;" id="md-snapshot" class="mdui-btn mdui-btn-icon" title="截图">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+      <div href="javascript:;" id="md-open" class="mdui-btn mdui-btn-icon" title="打开图片">
+        <i class="mdui-icon material-icons">&#xe2c8;</i>
+      </div>
+      <div href="javascript:;" id="md-rotate" class="mdui-btn mdui-btn-icon" title="向左旋转90°">
+        <i class="mdui-icon material-icons">&#xe419;</i>
+      </div>
+      <div href="javascript:;" id="md-set" class="mdui-btn mdui-btn-icon" title="设置">
+        <i class="mdui-icon material-icons">&#xe8b8;</i>
+      </div>
+      <div href="javascript:;" id="md-clear" class="mdui-btn mdui-btn-icon" title="关闭图片">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+    </div>
+  </header>
+  <div class="matrix-container">
+    <!-- 左侧：图片与框选 -->
+    <div class="matrix-panel matrix-panel-left layout-vertical">
+      <div class="matrix-panel-header">
+        <h3><i class="mdui-icon material-icons">&#xe3f4;</i>图片与框选<span id="md-imageSizeInfo"
+            style="margin-left:12px;font-size:12px;font-weight:normal;color:var(--md-muted);"></span></h3>
+        <div class="matrix-layout-toggle" aria-label="布局切换">
+          <button type="button" class="matrix-layout-btn active" data-md-layout="vertical">
+            <i class="mdui-icon material-icons">swap_vert</i>上下
+          </button>
+          <button type="button" class="matrix-layout-btn" data-md-layout="horizontal">
+            <i class="mdui-icon material-icons">swap_horiz</i>左右
+          </button>
+        </div>
+      </div>
+      <div class="matrix-canvas-grid">
+        <div class="matrix-canvas-item">
+          <div class="matrix-canvas-item-header">
+            <small>原图（点击弹出取色面板，Alt+点击快速取色）</small>
+          </div>
+          <div class="matrix-canvas-wrapper">
+            <canvas id="md-stageOriginal"></canvas>
+          </div>
+        </div>
+        <div class="matrix-canvas-item">
+          <div class="matrix-canvas-item-header">
+            <small>二值化视图（Shift+左键框选）</small>
+            <div class="matrix-canvas-actions">
+              <button type="button" class="matrix-btn secondary matrix-modifier-btn" id="md-armedShiftBtn"
+                title="触屏 Shift 框选模式">Shift</button>
+              <button type="button" class="matrix-btn secondary matrix-modifier-btn" id="md-armedMetaBtn"
+                title="触屏 Meta 框选模式">Meta</button>
+              <div class="matrix-zoom-control">
+                <label>缩放</label>
+                <input id="md-zoomRange" type="range" min="10" max="2000" value="100">
+                <span id="md-zoomLabel">100%</span>
+              </div>
+            </div>
+          </div>
+          <div class="matrix-canvas-wrapper">
+            <canvas id="md-stageBinary"></canvas>
+          </div>
+        </div>
+      </div>
+      <p class="matrix-hint">左键拖动平移，滚轮缩放；原图单击弹拾色面板，Alt+左键快速取色；触屏单指拖动、双指缩放；二值化 Shift/Meta 按钮单指框选；Shift+左键框选，右键拖动已有框；⌘+左键框选范围框，⌘+右键拖动范围框；⌘/Ctrl+V 粘贴剪贴板图片</p>
+    </div>
+    <!-- 中间：参数 -->
+    <div class="matrix-panel matrix-panel-params">
+      <!-- 放大镜 -->
+      <div class="matrix-magnifier">
+        <div class="matrix-magnifier-title">
+          <i class="mdui-icon material-icons">&#xe8b6;</i>
+          <span>放大镜</span>
+        </div>
+        <div class="matrix-magnifier-content">
+          <canvas id="md-magnifierCanvas" class="matrix-magnifier-canvas" width="120" height="120"></canvas>
+          <div class="matrix-magnifier-info">
+            <div>坐标: <span id="md-magnifierCoord" class="coord">--</span></div>
+            <div class="color-box">
+              <span>颜色:</span>
+              <span id="md-magnifierSwatch" class="color-swatch" style="background:#888"></span>
+              <span id="md-magnifierHex" class="coord">0x------</span>
+            </div>
+            <div>RGB: <span id="md-magnifierRgb" class="coord">--</span></div>
+          </div>
+        </div>
+        <div class="matrix-magnifier-controls">
+          <label>放大倍数:</label>
+          <input id="md-magnifierZoom" type="range" min="4" max="20" value="10">
+          <span id="md-magnifierZoomLabel">10x</span>
+        </div>
+      </div>
+
+      <h3><i class="mdui-icon material-icons">&#xe8b8;</i>参数</h3>
+      <div class="matrix-field-row">
+        <div class="matrix-field">
+          <label for="md-leftCols">左偏移量</label>
+          <input id="md-leftCols" type="number" value="0" step="1">
+        </div>
+        <div class="matrix-field">
+          <label for="md-rightCols">右偏移量</label>
+          <input id="md-rightCols" type="number" value="0" step="1">
+        </div>
+      </div>
+      <div class="matrix-field">
+        <label for="md-word">文字 / word</label>
+        <input id="md-word" type="text" placeholder="例如：A 或 阿">
+        <button type="button" class="matrix-btn secondary" id="md-submitWordBtn"
+          style="width:100%;margin-top:6px;">提交/更新（回车键）</button>
+      </div>
+      <div class="matrix-field" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--md-border);">
+        <label>二值化偏色列表 <small>Alt+点击快速取色 · ⌘/Ctrl+Z 撤销</small></label>
+        <div class="matrix-color-list-actions">
+          <button type="button" class="matrix-btn secondary" id="md-selectAllColors">全选</button>
+          <button type="button" class="matrix-btn secondary" id="md-deselectAllColors">反选</button>
+          <button type="button" class="matrix-btn secondary" id="md-defaultToleranceBtn">默认容差</button>
+          <button type="button" class="matrix-btn secondary" id="md-aggregateColorsBtn">聚合</button>
+          <button type="button" class="matrix-btn secondary" id="md-clearColorListBtn">清空列表</button>
+        </div>
+        <div id="md-colorRangeList" class="matrix-color-list"></div>
+        <textarea id="md-colorRangeText" rows="2" placeholder="输入偏色范围：9D5D39-0F1F26,D3D3D2-2C2C2D"></textarea>
+        <button type="button" class="matrix-btn secondary" id="md-setColorRangeBtn"
+          style="width:100%;margin-top:6px;">二值化</button>
+        <div class="matrix-btn-group" style="margin-top:6px;">
+          <button type="button" class="matrix-btn secondary" id="md-fitSelectionBtn" style="flex:1;">选区适应</button>
+          <button type="button" class="matrix-btn secondary" id="md-splitMatrixBtn" style="flex:1;" disabled>拆分点阵</button>
+        </div>
+      </div>
+      <!-- 选区记录 -->
+      <div class="matrix-selection-record" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--md-border);">
+        <div style="font-size:12px;color:var(--md-muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+          <i class="mdui-icon material-icons" style="font-size:14px;color:#00796b;">&#xe3c9;</i>选区记录
+        </div>
+        <div class="matrix-selection-list"
+          style="border:1px solid var(--md-border);border-radius:8px;background:#f8fcfe;font-size:12px;font-family:var(--md-mono);">
+          <div class="matrix-selection-item"
+            style="display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-border);">
+            <span style="color:#e35f4a;font-weight:500;">Shift框</span>
+            <span id="md-shiftSelectionCoord" title="点击拷贝" style="cursor:pointer;text-align:center;color:var(--md-muted);">0, 0, 0, 0</span>
+            <button id="md-clearShiftSelection" class="matrix-delete-btn" title="清除" style="border:none;background:transparent;color:var(--md-muted);cursor:pointer;opacity:0.6;">×</button>
+          </div>
+          <div class="matrix-selection-item"
+            style="display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:6px;padding:6px 8px;">
+            <span style="color:#3c96de;font-weight:500;">Meta框</span>
+            <span id="md-metaSelectionCoord" title="点击拷贝" style="cursor:pointer;text-align:center;color:var(--md-muted);">0, 0, 0, 0</span>
+            <button id="md-clearMetaSelection" class="matrix-delete-btn" title="清除" style="border:none;background:transparent;color:var(--md-muted);cursor:pointer;opacity:0.6;">×</button>
+          </div>
+        </div>
+      </div>
+      <!-- 代码模板分区 -->
+      <div class="matrix-field" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--md-border);">
+        <h3 style="margin-bottom:6px;"><i class="mdui-icon material-icons">&#xe86f;</i>代码模板</h3>
+        <div class="matrix-btn-group" style="margin-top:6px;">
+          <button type="button" class="matrix-btn secondary" id="md-customTpl1Btn" style="flex:1;">OCR</button>
+          <button type="button" class="matrix-btn secondary" id="md-customTpl2Btn" style="flex:1;">FindStr</button>
+          <button type="button" class="matrix-btn secondary" id="md-customTpl3Btn" style="flex:1;">FindMatrix</button>
+        </div>
+        <div class="matrix-btn-group" style="margin-top:6px;">
+          <button type="button" class="matrix-btn secondary" id="md-customTpl4Btn" style="flex:1;">自定义 1</button>
+          <button type="button" class="matrix-btn secondary" id="md-customTpl5Btn" style="flex:1;">自定义 2</button>
+          <button type="button" class="matrix-btn secondary" id="md-customTpl6Btn" style="flex:1;">自定义 3</button>
+        </div>
+      </div>
+    </div>
+    <!-- 右侧：结果 -->
+    <div class="matrix-panel matrix-panel-result">
+      <h3><i class="mdui-icon material-icons">&#xe86c;</i>结果</h3>
+      <div class="matrix-stats">
+        <div class="matrix-stat">
+          <strong id="md-statSelection">未选区</strong>
+          <span>选区宽 × 高</span>
+        </div>
+        <div class="matrix-stat">
+          <strong id="md-statBitsLen">0</strong>
+          <span>bits 长度</span>
+        </div>
+      </div>
+      <div class="matrix-field">
+        <label>完整编码行</label>
+        <textarea id="md-lineField" rows="3" readonly></textarea>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button type="button" class="matrix-btn" data-copy="#md-lineField" style="flex:1;">拷贝编码行</button>
+          <button type="button" class="matrix-btn secondary" id="md-saveBitImageBtn" style="flex:1;">保存点阵图像</button>
+        </div>
+      </div>
+      <div class="matrix-field" style="margin-top:6px;">
+        <label>
+          点阵预览
+          <small>滚轮/双指缩放 · 拖动平移 · Alt+点击编辑</small>
+        </label>
+        <div id="md-bitPreview" class="matrix-preview">
+          <canvas id="md-bitPreviewCanvas" style="display:none;"></canvas>
+          <span id="md-bitPreviewText">等待选区...</span>
+        </div>
+      </div>
+      <!-- 点阵列表 -->
+      <div class="matrix-list-section">
+        <div class="matrix-list-header">
+          <h4>点阵列表</h4>
+          <span id="md-matrixListCount" class="count">0 条</span>
+        </div>
+        <div class="matrix-list-actions">
+          <button type="button" class="matrix-btn secondary" id="md-importMatrixBtn">导入</button>
+          <button type="button" class="matrix-btn secondary" id="md-exportMatrixBtn">导出</button>
+          <button type="button" class="matrix-btn secondary" id="md-clearMatrixBtn">清空</button>
+          <input type="file" id="md-importMatrixFile" class="matrix-file-input-hidden" accept=".txt">
+        </div>
+        <div class="matrix-table-wrapper">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th>字符</th>
+                <th>宽高</th>
+                <th>点阵描述</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="md-matrixListBody"></tbody>
+          </table>
+        </div>
+        <p class="matrix-hint">选中预览编辑；上下箭头切换；Delete 键删除行；在「文字」框按回车添加/更新点阵</p>
+      </div>
+    </div>
+  </div>
+  <div id="md-toast" class="matrix-toast"></div>
+
+  <!-- 导出预览弹窗 -->
+  <div id="md-exportModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content">
+      <div class="matrix-code-modal-header">
+        <h3>导出点阵列表</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeExportModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <textarea id="md-exportContent" readonly
+          style="width:100%;height:300px;font-family:var(--md-mono);font-size:13px;line-height:1.5;padding:12px;border:1px solid var(--md-border);border-radius:8px;background:#f8fcfe;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-exportDownloadBtn">下载文件</button>
+        <button type="button" class="matrix-btn" id="md-exportCopyBtn">拷贝</button>
+        <button type="button" class="matrix-btn" id="md-exportCopyCodeBtn"
+          style="background:linear-gradient(120deg, #6a8de8 0%, #4a6dc8 100%);">拷贝代码</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导入弹窗 -->
+  <div id="md-importModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content">
+      <div class="matrix-code-modal-header">
+        <h3>导入点阵列表</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeImportModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:13px;color:var(--md-muted);margin:0 0 10px;">请将点阵数据粘贴到下方文本框中，每行一条：</p>
+        <textarea id="md-importContent"
+          style="width:100%;height:260px;font-family:var(--md-mono);font-size:13px;line-height:1.5;padding:12px;border:1px solid var(--md-border);border-radius:8px;background:#f8fcfe;resize:vertical;box-sizing:border-box;"
+          placeholder="粘贴点阵数据..."></textarea>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-importCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-importConfirmBtn">导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 清空确认弹窗 -->
+  <div id="md-clearModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>确认清空</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeClearModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">确定要清空所有点阵吗？此操作不可撤销，建议先导出备份。</p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-clearCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-clearConfirmBtn"
+          style="background:linear-gradient(120deg, var(--md-accent) 0%, #e87c6a 100%);">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 保存点阵图像弹窗 -->
+  <div id="md-saveBitImageModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:550px;">
+      <div class="matrix-code-modal-header">
+        <h3>保存点阵图像</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeSaveBitImageModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body" style="text-align:center;">
+        <div id="md-saveBitImagePreviewContainer"
+          style="margin-bottom:16px;padding:12px;background:#1e293b;border:1px solid var(--md-border);border-radius:8px;display:inline-block;">
+          <img id="md-saveBitImagePreviewImg" src="" alt="预览图像"
+            style="max-width:100%;max-height:200px;display:block;image-rendering:pixelated;" />
+        </div>
+        <div class="matrix-field">
+          <label>文件名称</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="md-saveBitImageFilename" placeholder="输入文件名" style="flex:1;" />
+            <span style="color:var(--md-muted);font-size:13px;">.png</span>
+          </div>
+        </div>
+        <div class="matrix-field" style="margin-top:12px;">
+          <label style="display:flex;align-items:center;justify-content:space-between;">
+            <span>代码模板</span>
+            <span style="font-size:11px;color:var(--md-muted);">(使用 $imgFileBaseName 作为文件名占位符)</span>
+          </label>
+          <textarea id="md-saveBitImageCodeTemplate" rows="2"
+            placeholder="例如: $imgFileBaseName = image.load_file(XXT_HOME_PATH..&quot;/res/$imgFileBaseName.png&quot;)"
+            style="font-family:var(--md-mono);font-size:12px;"></textarea>
+        </div>
+        <div class="matrix-field" style="margin-top:8px;">
+          <label>生成的代码</label>
+          <textarea id="md-saveBitImageGeneratedCode" rows="2" readonly
+            style="font-family:var(--md-mono);font-size:12px;background:#f0f6fa;"></textarea>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer" style="flex-wrap:wrap;gap:8px;">
+        <button type="button" class="matrix-btn secondary" id="md-saveBitImageCancelBtn">取消</button>
+        <button type="button" class="matrix-btn secondary" id="md-saveBitImageConfirmBtn"><i
+            class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe161;</i>保存</button>
+        <button type="button" class="matrix-btn" id="md-saveBitImageCopyAndSaveBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe14d;</i>拷贝代码并保存图像</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义模板弹窗 -->
+  <div id="md-customTplModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:720px;">
+      <div class="matrix-code-modal-header">
+        <h3 style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+          自定义模板
+          <input type="text" id="md-customTplNameInput" placeholder="按钮名称"
+            style="flex:1;min-width:80px;max-width:180px;padding:4px 8px;border:1px solid var(--md-border);border-radius:6px;font-size:13px;font-family:inherit;">
+        </h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeCustomTplModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div style="display:flex;gap:12px;margin-bottom:12px;">
+          <div style="flex:1;min-width:0;">
+            <label style="display:block;font-size:12px;font-weight:500;color:var(--md-muted);margin-bottom:4px;">代码模板</label>
+            <textarea id="md-customTplCode" rows="6" placeholder="输入完整代码模板，使用 $变量 进行替换…"
+              style="width:100%;font-family:var(--md-mono);font-size:12px;line-height:1.5;padding:8px;border:1px solid var(--md-border);border-radius:6px;resize:vertical;box-sizing:border-box;"></textarea>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <label style="display:block;font-size:12px;font-weight:500;color:var(--md-muted);margin-bottom:4px;">核心行模板</label>
+            <textarea id="md-customTplCoreLine" rows="6" placeholder="输入核心行模板…"
+              style="width:100%;font-family:var(--md-mono);font-size:12px;line-height:1.5;padding:8px;border:1px solid var(--md-border);border-radius:6px;resize:vertical;box-sizing:border-box;"></textarea>
+          </div>
+        </div>
+        <label style="display:block;font-size:12px;font-weight:500;color:var(--md-muted);margin-bottom:4px;">预览</label>
+        <textarea id="md-customTplPreview" readonly rows="8"
+          style="width:100%;font-family:var(--md-mono);font-size:12px;line-height:1.5;padding:10px;border:1px solid var(--md-border);border-radius:6px;background:#f8fcfe;resize:vertical;box-sizing:border-box;"></textarea>
+        <details style="margin-top:10px;font-size:11px;">
+          <summary style="cursor:pointer;user-select:none;color:var(--md-muted);">模板变量说明</summary>
+          <table style="margin-top:6px;width:100%;border-collapse:collapse;font-size:11px;">
+            <thead>
+              <tr style="background:#f0f6fa;">
+                <th style="padding:5px 8px;text-align:left;border:1px solid var(--md-border);font-weight:500;">变量</th>
+                <th style="padding:5px 8px;text-align:left;border:1px solid var(--md-border);font-weight:500;">说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$shiftRect.left</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Shift 框左边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$shiftRect.top</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Shift 框上边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$shiftRect.right</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Shift 框右边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$shiftRect.bottom</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Shift 框下边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$metaRect.left</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Meta 框左边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$metaRect.top</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Meta 框上边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$metaRect.right</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Meta 框右边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$metaRect.bottom</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">Meta 框下边界坐标</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$colorRange</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">颜色范围文本，如 E983F0-101010,FFFFFF-101010</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$matrix</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">当前完整编码行</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$matrixList</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">点阵列表所有编码行（多行，换行分隔）</td></tr>
+              <tr><td style="padding:4px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);"><code>$word</code></td><td style="padding:4px 8px;border:1px solid var(--md-border);">当前「文字」输入框内容</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn" id="md-customTplCopyCode">拷贝代码</button>
+        <button type="button" class="matrix-btn" id="md-customTplCopyCoreLine"
+          style="margin-left:10px;background:linear-gradient(120deg, #6a8de8 0%, #4a6dc8 100%);">拷贝核心行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑偏色范围弹窗 -->
+  <div id="md-editColorModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>编辑偏色范围</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeEditColorModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:13px;color:var(--md-muted);margin:0 0 10px;">格式: RRGGBB-RRGGBB (基准色-容差)</p>
+        <input type="text" id="md-editColorInput" class="matrix-edit-input" placeholder="例如: 9D5D39-0F1F26">
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-editColorCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-editColorConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认删除偏色弹窗 -->
+  <div id="md-deleteColorModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>确认删除</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeDeleteColorModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">确定要删除这个偏色范围吗？</p>
+        <p id="md-deleteColorText"
+          style="font-size:13px;color:var(--md-muted);margin:10px 0 0;font-family:var(--md-mono);"></p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-deleteColorCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-deleteColorConfirmBtn"
+          style="background:linear-gradient(120deg, var(--md-accent) 0%, #e87c6a 100%);">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 默认容差设置弹窗 -->
+  <div id="md-defaultToleranceModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>设置默认容差</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeDefaultToleranceModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:13px;color:var(--md-muted);margin:0 0 12px;">设置 Alt 取色面板的默认通道容差值</p>
+        <div class="matrix-field">
+          <label for="md-defaultToleranceInput">默认容差 (RRGGBB)</label>
+          <input type="text" id="md-defaultToleranceInput" placeholder="例如: 101010" maxlength="6" style="font-family:var(--md-mono);">
+        </div>
+        <p style="font-size:11px;color:var(--md-muted);margin:8px 0 0;"><i class="mdui-icon material-icons" style="font-size:14px;vertical-align:middle;margin-right:2px;">&#xe88e;</i>容差格式为 6 位十六进制，分别表示 R、G、B 三个通道的容差值</p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-defaultToleranceCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-defaultToleranceConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认清空偏色列表弹窗 -->
+  <div id="md-clearColorListModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>确认清空</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeClearColorListModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">确定要清空所有偏色范围吗？此操作不可撤销。</p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-clearColorListCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-clearColorListConfirmBtn"
+          style="background:linear-gradient(120deg, var(--md-accent) 0%, #e87c6a 100%);">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 拆分点阵参数弹窗 -->
+  <div id="md-splitMatrixModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:420px;">
+      <div class="matrix-code-modal-header">
+        <h3>拆分点阵</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeSplitMatrixModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:13px;color:var(--md-muted);margin:0 0 12px;">将当前二值化选区按字符分隔拆分为多个点阵</p>
+        <div class="matrix-field">
+          <label for="md-splitRunCol">空列阈值</label>
+          <input type="number" id="md-splitRunCol" value="1" min="1" max="50" step="1">
+          <p style="font-size:11px;color:var(--md-muted);margin:4px 0 0;">连续多少列空白才视为字符分隔（默认 1）</p>
+        </div>
+        <div class="matrix-field" style="margin-top:12px;">
+          <label for="md-splitMaxHeight">行高限制</label>
+          <input type="number" id="md-splitMaxHeight" value="0" min="0" max="500" step="1">
+          <p style="font-size:11px;color:var(--md-muted);margin:4px 0 0;">限制点阵最大高度，0 表示不限制</p>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-splitMatrixCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-splitMatrixConfirmBtn">开始拆分</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底色选择弹窗（用于选区适应和拆分点阵的白底/黑底模式选择） -->
+  <div id="md-bgModeModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3 id="md-bgModeTitle">选择底色模式</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeBgModeModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:13px;color:var(--md-muted);margin:0 0 12px;">检测到选区边缘几乎全白，可能是白底图像。请选择底色模式：</p>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button type="button" class="matrix-btn" id="md-bgModeBlackBtn" style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <span style="width:32px;height:32px;background:#000;border-radius:4px;border:2px solid #333;"></span>
+            <span>黑底模式</span>
+            <small style="font-size:11px;color:var(--md-muted);">白字黑底（默认）</small>
+          </button>
+          <button type="button" class="matrix-btn secondary" id="md-bgModeWhiteBtn" style="flex:1;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <span style="width:32px;height:32px;background:#fff;border-radius:4px;border:2px solid #ccc;"></span>
+            <span>白底模式</span>
+            <small style="font-size:11px;color:var(--md-muted);">黑字白底</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认删除点阵弹窗 -->
+  <div id="md-deleteMatrixModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>确认删除</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeDeleteMatrixModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">确定要删除这个点阵吗？</p>
+        <p id="md-deleteMatrixText"
+          style="font-size:13px;color:var(--md-muted);margin:10px 0 0;font-family:var(--md-mono);"></p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-deleteMatrixCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-deleteMatrixConfirmBtn"
+          style="background:linear-gradient(120deg, var(--md-accent) 0%, #e87c6a 100%);">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 粘贴确认弹窗 -->
+  <div id="md-pasteConfirmModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>替换当前图片</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closePasteConfirmModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">当前已打开一张图片，是否关闭并打开剪贴板中的新图片？</p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-pasteConfirmCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-pasteConfirmBtn">确定替换</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div id="md-settingsModal" class="matrix-code-modal">
+    <div class="matrix-code-modal-content">
+      <div class="matrix-code-modal-header">
+        <h3>设置</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeSettingsModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:6px;">截图默认旋转方向</label>
+          <div id="md-snapshotOrientBtns" style="display:flex;gap:6px;">
+            <button type="button" class="matrix-orient-btn active" data-orient="0">Home在下</button>
+            <button type="button" class="matrix-orient-btn" data-orient="3">Home在上</button>
+            <button type="button" class="matrix-orient-btn" data-orient="1">Home在右</button>
+            <button type="button" class="matrix-orient-btn" data-orient="2">Home在左</button>
+          </div>
+        </div>
+        <div class="matrix-field" style="margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;">
+            <input type="checkbox" id="md-remoteSnapshotEnabled"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--md-ink);">
+            <span>从其它设备截图</span>
+          </label>
+          <div id="md-remoteSnapshotSettings" style="display:none;margin-top:8px;">
+            <div class="matrix-field-row">
+              <div class="matrix-field">
+                <label for="md-remoteHost">设备地址</label>
+                <input id="md-remoteHost" type="text" placeholder="例如: 192.168.1.100">
+              </div>
+              <div class="matrix-field" style="max-width:120px;">
+                <label for="md-remotePort">端口</label>
+                <input id="md-remotePort" type="number" value="46952" placeholder="46952">
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--md-accent);margin:6px 0 0;"><i class="mdui-icon material-icons"
+                style="font-size:14px;vertical-align:middle;margin-right:2px;">&#xe002;</i>需要在目标设备上打开 XXT → 更多 → 用户偏好设置
+              → 跨域访问 → 允许</p>
+          </div>
+        </div>
+        <div id="md-savePathSettingWrapper" class="matrix-field" style="margin-top:10px;display:none;">
+          <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;">
+            <input type="checkbox" id="md-savePathEnabled"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--md-ink);">
+            <span>指定图片保存路径</span>
+          </label>
+          <div id="md-savePathSettings" style="display:none;margin-top:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="md-savePathDisplay" type="text" placeholder="未选择保存路径" readonly
+                style="flex:1;background:#f0f6fa;cursor:default;">
+              <button type="button" class="matrix-btn secondary" id="md-selectSavePathBtn"
+                style="white-space:nowrap;">选择文件夹</button>
+            </div>
+            <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0;"><i class="mdui-icon material-icons"
+                style="font-size:14px;vertical-align:middle;margin-right:2px;">&#xe88e;</i>授权后，保存图片将直接写入指定文件夹，无需下载确认（与取色器页面共用此配置）
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-settingsCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-settingsSaveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+  <!-- 编辑选区弹窗 -->
+  <div id="md-editSelectionModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3 id="md-editSelectionTitle">编辑区域</h3>
+        <button type="button" class="matrix-code-modal-close" id="md-closeEditSelectionModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:8px;">区域坐标 (left, top, right, bottom)</label>
+          <input type="text" id="md-editSelectionInput" class="matrix-edit-input" placeholder="例如: 100, 100, 200, 200">
+          <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0;">如果起点坐标大于终点坐标，将自动交换</p>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="md-editSelectionCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="md-editSelectionConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="md-colorPickPopover" role="dialog" aria-label="颜色范围拾取面板" aria-hidden="true">
+    <div class="matrix-color-pick-head">
+      <div id="md-colorPickBaseSwatch" class="matrix-color-pick-swatch"></div>
+      <div>
+        <p id="md-colorPickBaseHex" class="matrix-color-pick-title">0x000000</p>
+        <p id="md-colorPickCoord" class="matrix-color-pick-sub">坐标: --</p>
+        <p id="md-colorPickTolHex" class="matrix-color-pick-sub">容差 HEX: 000000</p>
+      </div>
+    </div>
+    <div class="matrix-color-pick-row">
+      <label for="md-colorPickTolR">R</label>
+      <input id="md-colorPickTolR" type="range" min="0" max="255" value="16">
+      <input id="md-colorPickTolRInput" type="number" min="0" max="255" value="16" inputmode="numeric">
+    </div>
+    <div class="matrix-color-pick-row">
+      <label for="md-colorPickTolG">G</label>
+      <input id="md-colorPickTolG" type="range" min="0" max="255" value="16">
+      <input id="md-colorPickTolGInput" type="number" min="0" max="255" value="16" inputmode="numeric">
+    </div>
+    <div class="matrix-color-pick-row">
+      <label for="md-colorPickTolB">B</label>
+      <input id="md-colorPickTolB" type="range" min="0" max="255" value="16">
+      <input id="md-colorPickTolBInput" type="number" min="0" max="255" value="16" inputmode="numeric">
+    </div>
+    <div class="matrix-color-pick-actions">
+      <button type="button" class="matrix-btn" id="md-colorPickAddBtn" style="flex:1;">添加到色偏列表</button>
+      <button type="button" class="matrix-btn secondary" id="md-colorPickCancelBtn" style="flex:0 0 auto;">取消</button>
+    </div>
+  </div>
+
+  <script>
+    // 禁用系统默认右键菜单，只使用明确实现的右键功能
+    // 但对于文本框控件保留默认菜单
+    document.addEventListener('contextmenu', function(e) {
+      const target = e.target;
+      // 如果是文本输入控件，允许默认右键菜单
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      e.preventDefault();
+    });
+  </script>
+</body>
+
+</html>

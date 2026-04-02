@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec /usr/bin/1ferver/add1s0 "$@"

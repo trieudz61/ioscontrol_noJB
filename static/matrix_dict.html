@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Matrix Dict — IOSControl</title>
+<style>
+  :root { --bg:#0f0f1a; --surface:#1a1a2e; --surface2:#16213e; --accent:#6c63ff; --text:#e8e8f0; --subtext:#888899; --border:#2a2a3e; --green:#34d399; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  .topbar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .topbar h1 { font-size:15px; font-weight:600; color:#a78bfa; }
+  .sep { flex:1; }
+  .btn { padding:6px 12px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:500; transition:opacity 0.15s; }
+  .btn:active { opacity:0.7; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-sec { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+
+  .main { display:flex; flex:1; overflow:hidden; gap:0; }
+  .canvas-wrap { flex:1; position:relative; overflow:hidden; background:#050510; display:flex; align-items:center; justify-content:center; }
+  #screen-canvas { image-rendering:pixelated; cursor:crosshair; touch-action:none; max-width:100%; max-height:100%; display:block; }
+
+  /* Selection rectangle */
+  #sel-rect { position:absolute; border:2px solid var(--accent); background:rgba(108,99,255,0.15); pointer-events:none; display:none; }
+
+  .panel { width:260px; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
+  .panel-section { padding:12px; border-bottom:1px solid var(--border); }
+  .panel-section h3 { font-size:11px; text-transform:uppercase; color:var(--subtext); letter-spacing:0.5px; margin-bottom:8px; }
+  .ctrl-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .ctrl-row label { font-size:12px; color:var(--subtext); min-width:80px; }
+  input[type=range] { flex:1; accent-color:var(--accent); }
+  .val-badge { font-size:11px; color:var(--text); min-width:28px; text-align:right; }
+  .thresh-preview { width:100%; height:60px; border-radius:8px; border:1px solid var(--border); image-rendering:pixelated; margin-top:6px; }
+
+  /* Matrix output */
+  .matrix-out { flex:1; overflow-y:auto; padding:10px; }
+  .matrix-code { background:#0a0a14; border:1px solid var(--border); border-radius:8px; padding:10px; font-family:monospace; font-size:11px; line-height:1.5; color:var(--green); white-space:pre-wrap; word-break:break-all; min-height:80px; }
+
+  ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🔲 Matrix Dict</h1>
+  <div class="sep"></div>
+  <button class="btn btn-sec" id="btn-capture">🔄 Capture</button>
+  <button class="btn btn-primary" id="btn-extract">Extract Region</button>
+</div>
+
+<div class="main">
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="screen-canvas"></canvas>
+    <div id="sel-rect"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-section">
+      <h3>Threshold (B&W)</h3>
+      <div class="ctrl-row">
+        <label>Threshold</label>
+        <input type="range" id="thresh" min="0" max="255" value="128">
+        <span class="val-badge" id="thresh-val">128</span>
+      </div>
+      <canvas class="thresh-preview" id="thresh-preview" width="200" height="60"></canvas>
+    </div>
+
+    <div class="panel-section">
+      <h3>Region</h3>
+      <div class="ctrl-row"><label>X</label><input type="number" id="rx" value="0" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px"></div>
+      <div class="ctrl-row"><label>Y</label><input type="number" id="ry" value="0" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px"></div>
+      <div class="ctrl-row"><label>W</label><input type="number" id="rw" value="100" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px"></div>
+      <div class="ctrl-row"><label>H</label><input type="number" id="rh" value="40" style="width:60px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px"></div>
+    </div>
+
+    <div class="matrix-out">
+      <div class="panel-section" style="padding:0;border:none">
+        <h3 style="padding:8px 0 8px">Generated Dict</h3>
+        <div class="matrix-code" id="matrix-out">-- Select region and click Extract</div>
+        <button class="btn btn-sec" style="width:100%;margin-top:8px" id="btn-copy">📋 Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PORT = location.port || 46952;
+const API = `http://${location.hostname}:${PORT}`;
+const canvas = document.getElementById('screen-canvas');
+const ctx = canvas.getContext('2d');
+let img = null;
+let selStart = null, selBox = null;
+
+async function capture() {
+  try {
+    const r = await fetch(`${API}/api/screen?quality=90`);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); drawCanvas(); };
+    img.src = url;
+  } catch(e) { console.error(e); }
+}
+
+function drawCanvas() {
+  if (!img) return;
+  const wrap = document.getElementById('canvas-wrap');
+  const scale = Math.min(wrap.clientWidth / img.width, wrap.clientHeight / img.height);
+  canvas.width = img.width; canvas.height = img.height;
+  canvas.style.width = Math.floor(img.width*scale)+'px';
+  canvas.style.height = Math.floor(img.height*scale)+'px';
+  ctx.drawImage(img, 0, 0);
+  if (selBox) drawSelection();
+  updateThreshPreview();
+}
+
+function canvasToScreen(ex, ey) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: Math.round((ex-rect.left) * canvas.width/rect.width), y: Math.round((ey-rect.top) * canvas.height/rect.height) };
+}
+
+// Drag selection
+let isDragging = false;
+canvas.addEventListener('mousedown', e => { isDragging=true; selStart=canvasToScreen(e.clientX,e.clientY); selBox=null; });
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const cur = canvasToScreen(e.clientX, e.clientY);
+  selBox = { x:Math.min(selStart.x,cur.x), y:Math.min(selStart.y,cur.y), w:Math.abs(cur.x-selStart.x), h:Math.abs(cur.y-selStart.y) };
+  drawCanvas();
+  drawSelection();
+  updateInputs();
+});
+canvas.addEventListener('mouseup', () => { isDragging=false; if(selBox && selBox.w>2 && selBox.h>2) extractMatrix(); });
+
+function drawSelection() {
+  if (!selBox) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = rect.width/canvas.width, scaleY = rect.height/canvas.height;
+  const wrap = document.getElementById('canvas-wrap');
+  const wr = wrap.getBoundingClientRect();
+  const sr = canvas.getBoundingClientRect();
+  const el = document.getElementById('sel-rect');
+  el.style.display='block';
+  el.style.left=(sr.left-wr.left+selBox.x*scaleX)+'px';
+  el.style.top=(sr.top-wr.top+selBox.y*scaleY)+'px';
+  el.style.width=(selBox.w*scaleX)+'px';
+  el.style.height=(selBox.h*scaleY)+'px';
+}
+
+function updateInputs() {
+  if (!selBox) return;
+  document.getElementById('rx').value=selBox.x;
+  document.getElementById('ry').value=selBox.y;
+  document.getElementById('rw').value=selBox.w;
+  document.getElementById('rh').value=selBox.h;
+}
+
+function getRegionFromInputs() {
+  return { x:+document.getElementById('rx').value, y:+document.getElementById('ry').value, w:+document.getElementById('rw').value, h:+document.getElementById('rh').value };
+}
+
+function extractMatrix() {
+  if (!img) return;
+  const region = selBox || getRegionFromInputs();
+  const thresh = +document.getElementById('thresh').value;
+  const off = document.createElement('canvas');
+  off.width=region.w; off.height=region.h;
+  const oc = off.getContext('2d');
+  oc.drawImage(img, region.x, region.y, region.w, region.h, 0, 0, region.w, region.h);
+  const data = oc.getImageData(0,0,region.w,region.h).data;
+
+  // Binary matrix row by row
+  const rows = [];
+  for (let y=0; y<region.h; y++) {
+    const row = [];
+    for (let x=0; x<region.w; x++) {
+      const i = (y*region.w+x)*4;
+      const gray = 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
+      row.push(gray < thresh ? 1 : 0);
+    }
+    rows.push(row);
+  }
+
+  // Generate Lua dict
+  const lines = [`-- Matrix dict extracted from (${region.x},${region.y}) ${region.w}x${region.h} thr=${thresh}`, `local dict = {`];
+  rows.forEach((row,y) => lines.push(`  {${row.join(',')}}, -- row ${y}`));
+  lines.push(`}`);
+  lines.push(`-- rows=${region.h} cols=${region.w}`);
+  document.getElementById('matrix-out').textContent = lines.join('\n');
+  updateThreshPreview();
+}
+
+function updateThreshPreview() {
+  if (!img) return;
+  const region = selBox || getRegionFromInputs();
+  const thresh = +document.getElementById('thresh').value;
+  const off = document.createElement('canvas');
+  off.width = Math.min(region.w||100, 200); off.height = Math.min(region.h||40, 60);
+  const oc = off.getContext('2d');
+  oc.drawImage(img, region.x, region.y, region.w||100, region.h||40, 0, 0, off.width, off.height);
+  const id = oc.getImageData(0,0,off.width,off.height);
+  for (let i=0; i<id.data.length; i+=4) {
+    const gray = 0.299*id.data[i]+0.587*id.data[i+1]+0.114*id.data[i+2];
+    const v = gray < thresh ? 0 : 255;
+    id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=255;
+  }
+  oc.putImageData(id,0,0);
+  const prev = document.getElementById('thresh-preview');
+  const pc = prev.getContext('2d');
+  pc.drawImage(off,0,0,prev.width,prev.height);
+}
+
+document.getElementById('thresh').addEventListener('input', e => {
+  document.getElementById('thresh-val').textContent = e.target.value;
+  updateThreshPreview();
+  if (selBox) extractMatrix();
+});
+document.getElementById('btn-capture').addEventListener('click', capture);
+document.getElementById('btn-extract').addEventListener('click', () => {
+  selBox = getRegionFromInputs();
+  extractMatrix();
+});
+document.getElementById('btn-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('matrix-out').textContent).catch(()=>{});
+});
+
+capture();
+</script>
+</body>
+</html>

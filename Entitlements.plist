@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ═══ HID Event Access (from XXTouch) ═══ -->
+    <key>com.apple.private.hid.client.event-dispatch</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-filter</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-monitor</key>
+    <true/>
+    <key>com.apple.private.hid.client.service-protected</key>
+    <true/>
+    <key>com.apple.private.hid.manager.client</key>
+    <true/>
+    <key>com.apple.hid.system.user-access-service</key>
+    <true/>
+
+    <!-- ═══ BackBoard (touch routing + display) ═══ -->
+    <key>com.apple.backboard.client</key>
+    <true/>
+    <key>com.apple.backboardd.launchapplications</key>
+    <true/>
+    <key>com.apple.backboardd.touchDeliveryObservation</key>
+    <true/>
+    <key>com.apple.backboardd.lastUserEventTime</key>
+    <true/>
+
+    <!-- ═══ SpringBoard (hardware buttons + app launch) ═══ -->
+    <key>com.apple.springboard.hardware-button-service.event-consumption</key>
+    <true/>
+    <key>com.apple.springboard.launchapplications</key>
+    <true/>
+
+    <!-- ═══ IOSurface / Screen Capture ═══ -->
+    <key>com.apple.private.iosurface</key>
+    <true/>
+    <key>com.apple.private.IOSurface.protected-access</key>
+    <true/>
+    <key>com.apple.private.IOMobileFramebuffer</key>
+    <true/>
+    <key>com.apple.QuartzCore.displayable-context</key>
+    <true/>
+    <key>com.apple.QuartzCore.global-capture</key>
+    <true/>
+    <key>com.apple.QuartzCore.secure-capture</key>
+    <true/>
+    <key>com.apple.QuartzCore.secure-mode</key>
+    <true/>
+
+    <!-- ═══ IOKit user client ═══ -->
+    <key>com.apple.security.iokit-user-client-class</key>
+    <array>
+        <string>AGXDeviceUserClient</string>
+        <string>IOHDIXControllerUserClient</string>
+        <string>IOSurfaceRootUserClient</string>
+        <string>IOUserClient</string>
+    </array>
+
+    <!-- ═══ Sandbox / Platform / Process ═══ -->
+    <key>com.apple.private.security.no-sandbox</key>
+    <true/>
+    <key>com.apple.private.security.container-required</key>
+    <false/>
+    <key>platform-application</key>
+    <true/>
+    <key>run-unsigned-code</key>
+    <true/>
+    <key>task_for_pid-allow</key>
+    <true/>
+    <key>proc_info-allow</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- ═══ Memorystatus (Anti-Jetsam) ═══ -->
+    <key>com.apple.private.memorystatus</key>
+    <true/>
+
+    <!-- ═══ Network ═══ -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>

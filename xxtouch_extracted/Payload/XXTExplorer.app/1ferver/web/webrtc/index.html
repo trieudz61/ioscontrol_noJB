@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>XXTouch 远程控制</title>
+  <script type="module" crossorigin src="./js/main.min.js"></script>
+  <link rel="stylesheet" crossorigin href="./css/style.min.css">
+</head>
+
+<body>
+  <div class="container">
+    <!-- 顶部控制栏 -->
+    <div class="controls">
+      <div class="slider-control">
+        <label for="fpsSlider">FPS:&nbsp;<span id="fpsValue">20</span></label>
+        <input type="range" id="fpsSlider" min="1" max="60" value="20" step="1">
+      </div>
+      <div class="slider-control">
+        <label for="resolutionSlider">分辨率:&nbsp;<span id="resolutionValue">60%</span></label>
+        <input type="range" id="resolutionSlider" min="25" max="100" value="60" step="5">
+      </div>
+
+      <div class="rotation-group">
+        <!-- 状态显示切换按钮 -->
+        <button id="statsToggleBtn" class="btn btn-stats" title="显示/隐藏状态信息">📊</button>
+        <span class="divider">|</span>
+        <!-- 旋转控制组 -->
+        <span class="rotation-label">旋转:</span>
+        <button class="rotate-btn active" data-rotation="0" title="正常">↑</button>
+        <button class="rotate-btn" data-rotation="90" title="右转90°">→</button>
+        <button class="rotate-btn" data-rotation="180" title="旋转180°">↓</button>
+        <button class="rotate-btn" data-rotation="270" title="左转90°">←</button>
+      </div>
+    </div>
+
+    <!-- 视频容器 -->
+    <div class="video-container">
+      <div class="video-wrapper">
+        <video id="remoteVideo" autoplay muted playsinline></video>
+      </div>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div class="bottom-toolbar">
+      <button id="homeBtn" class="btn btn-info" title="返回主屏幕">🏠 主屏幕</button>
+      <button id="volumeDownBtn" class="btn btn-secondary" title="音量-">🔉 -</button>
+      <button id="volumeUpBtn" class="btn btn-secondary" title="音量+">🔊 +</button>
+      <button id="lockScreenBtn" class="btn btn-warning" title="锁定屏幕">🔒 锁屏</button>
+      <button id="copyBtn" class="btn btn-success" title="从设备复制">📑 拷贝</button>
+      <button id="pasteBtn" class="btn btn-primary" title="粘贴剪贴板内容到设备">📋 粘贴</button>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="stats" id="stats">
+      <div class="stat-item">
+        <span class="stat-label">状态:</span>
+        <span class="stat-value" id="connectionState">未连接</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">分辨率:</span>
+        <span class="stat-value" id="resolution">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">帧率:</span>
+        <span class="stat-value" id="framerate">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">比特率:</span>
+        <span class="stat-value" id="bitrate">-</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">延迟:</span>
+        <span class="stat-value" id="latency">-</span>
+      </div>
+    </div>
+
+    <!-- 剪贴板传输进度条 -->
+    <div class="clipboard-progress" id="clipboardProgress">
+      <div class="clipboard-progress-title" id="clipboardProgressTitle">正在传输剪贴板数据...</div>
+      <div class="clipboard-progress-bar">
+        <div class="clipboard-progress-fill" id="clipboardProgressFill" style="width: 0%"></div>
+      </div>
+      <div class="clipboard-progress-text" id="clipboardProgressText">0 / 0</div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="message" class="message"></div>
+
+    <!-- 键盘指示器 -->
+    <div id="keyboardIndicator" class="keyboard-indicator"></div>
+  </div>
+
+  <!-- 加载主应用 -->
+</body>
+
+</html>

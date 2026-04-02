@@ -1,0 +1,22 @@
+--[[
+
+    本文件仅作为参考，请不要修改本文件
+    本文件会在重装、更新时被原版覆盖
+
+--]]
+
+local group, name
+
+group = 'App'
+name = 'app.run(bid)'
+
+return {
+	name = string.format('%s - %s', group, name),
+	description = "运行应用程序",
+	arguments = {
+		{type = 'app'},
+	},
+	generator = function(bid)
+		return string.format('app.run(%q)', bid)
+	end,
+}

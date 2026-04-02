@@ -1,0 +1,375 @@
+# 🔍 Phân Tích Kỹ Thuật: XXTouch iOS v1.3.8
+
+> Reverse engineering từ file [app.xxtouch.ios_1.3.8-20260303222222.tipa](file:///Users/trieudz/Desktop/Test/app.xxtouch.ios_1.3.8-20260303222222.tipa)
+> Bundle ID: `com.xxtouch.XXTExplorer` | iOS 9.0+ | arm64 | Xcode 16.2
+
+---
+
+## 📐 Kiến Trúc Tổng Quan
+
+```mermaid
+graph TB
+    subgraph "App Layer"
+        A["XXTExplorer<br/>(Main UI App)"]
+    end
+    
+    subgraph "Daemon Layer"
+        B["ReportCrash<br/>(Daemon Process)"]
+        C["XXTUIService.app<br/>(Hidden UI Daemon)"]
+    end
+    
+    subgraph "Core Runtime"
+        D["libxxtouch.so<br/>(JS Engine + WebRTC)"]
+        E["1feaks.dylib<br/>(System Hooks + Daemon Mgr)"]
+    end
+    
+    subgraph "Native Modules (.so)"
+        F["cv.so<br/>(OpenCV + PaddleOCR)"]
+        G["tess_ocr.so<br/>(Tesseract OCR)"]
+        H["ev.so | openssl.so<br/>posix.so | zip.so | lpeg.so"]
+    end
+
+    subgraph "System Frameworks (Private)"
+        I["IOKit / BackBoardServices"]
+        J["SpringBoardServices / GraphicsServices"]
+        K["libMobileGestalt"]
+    end
+    
+    A --> E
+    E --> B
+    E --> C
+    B --> D
+    D --> F
+    D --> G
+    D --> H
+    E --> I
+    E --> J
+    E --> K
+```
+
+| Component | Binary | Arch | Role |
+|---|---|---|---|
+| **XXTExplorer** | `XXTExplorer` | arm64 | Main UI app — file explorer, script editor, settings |
+| **ReportCrash** | `bin/ReportCrash` | arm64 | Daemon process (disguised name) — core runtime host |
+| **XXTUIService** | `bin/XXTUIService.app/` | arm64 | Hidden daemon app for overlay UI (toast, alerts) |
+| **1feaks.dylib** | `Frameworks/1feaks.dylib` | arm64/arm64e | Substrate tweak — daemon manager, system hooks |
+| **libxxtouch.so** | `bin/libxxtouch.so` | arm64 | Core engine: JSC runtime + WebRTC + screen + touch |
+| **cv.so** | `bin/lib/image/cv.so` | arm64 | OpenCV 3.4.20 + Paddle-Lite 2.14 computer vision |
+| **tess_ocr.so** | `bin/lib/image/tess_ocr.so` | arm64 | Tesseract 3.02.02 + Leptonica OCR engine |
+| **opainject** | `bin/opainject` | arm64/arm64e | Process injection tool (inject dylib vào process) |
+| **1nstaller** | `bin/1nstaller` | armv7/arm64 | Package installer (tương tự dpkg) |
+| **add1s/add1s0** | `bin/add1s` | shell → arm64 | Utility shell wrapper |
+| **fastPathSign** | `bin/fastPathSign` | arm64 | Ad-hoc code signing tool |
+
+---
+
+## 1️⃣ Daemon Architecture
+
+### Quy trình khởi động
+
+```mermaid
+sequenceDiagram
+    participant App as XXTExplorer (UI)
+    participant Tweak as 1feaks.dylib
+    participant Daemon as ReportCrash (Daemon)
+    participant UI as XXTUIService (Hidden App)
+    
+    App->>Tweak: App launch trigger
+    Tweak->>Tweak: posix_spawn() / launchd plist
+    Tweak->>Daemon: Start ReportCrash process
+    Daemon->>Daemon: Load libxxtouch.so
+    Daemon->>Daemon: Init JSC engine + WebRTC
+    Daemon->>UI: Launch XXTUIService (hidden)
+    UI->>UI: Overlay windows (toast, alerts)
+    Tweak-->>App: "daemon connected"
+```
+
+### Chi tiết kỹ thuật
+
+| Aspect | Detail |
+|---|---|
+| **Daemon binary** | `ReportCrash` — đặt tên giống Apple crash reporter để tránh phát hiện |
+| **Install path** | `/usr/bin/1ferver/ReportCrash` |
+| **LaunchDaemon** | `/Library/LaunchDaemons/com.1func.xxtouch.plist` |
+| **Process spawn** | `posix_spawn()` — không dùng `fork()` |
+| **Injection** | `opainject` — inject `1feaks.dylib` vào target process |
+| **Restart** | `killall -9 ReportCrash` rồi restart qua launchd |
+| **Config file** | `/var/mobile/Media/1ferver/1ferver.conf` |
+| **Data directory** | `/var/mobile/Media/1ferver/` |
+
+### XXTUIService — Hidden Daemon App
+
+```
+NSPrincipalClass: XXTDaemonApp
+SBAppTags: [hidden]                    ← Ẩn khỏi SpringBoard
+UIApplicationShowsViewsWhileLocked: true  ← Hiển thị khi khóa màn hình
+UIApplicationSystemWindowsSecureKey: true  ← Secure window content
+```
+
+Đây là app ẩn chạy song song, chịu trách nhiệm hiển thị overlay UI (toast windows, web views) trên top mọi app khác.
+
+### 1feaks.dylib — System Integration Layer
+
+Liên kết **private frameworks**:
+- `BackBoardServices` — quản lý backboard session, process lifecycle
+- `SpringBoardServices` — `SBSLaunchApplicationWithIdentifier`, `SBLockScreenManager`
+- `GraphicsServices` — GSEvent, display management
+- `IOKit` — hardware access, `IOHIDEvent*`
+- `libMobileGestalt` — device identifier queries
+- `JavaScriptCore` — JSC bridge cho Lua↔JS
+- `libffi` — foreign function interface cho dynamic calls
+
+Chức năng chính:
+- `BKSTerminateApplicationForReasonAndReportWithDescription` — kill app
+- `_accessibilityFrontMostApplication` — detect foreground app
+- `_frontMostAppOrientation` — detect screen orientation
+- `_AXSAssistiveTouchSetEnabled` — toggle AssistiveTouch
+- `_recentDisplayIdentifiers` — app switcher history
+- `CFRunLoopObserver*` — event loop monitoring
+- `DISPATCH_SOURCE_TYPE_MACH_RECV/SEND` — Mach IPC
+- `DISPATCH_PROC_FORK/EXEC` — process lifecycle monitoring
+
+---
+
+## 2️⃣ WebRTC Live Screen Streaming & Control
+
+### Architecture
+
+```mermaid
+graph LR
+    subgraph "iPhone (Daemon)"
+        A["IOSurfaceAccelerator<br/>Screen Capture"] --> B["RTCCVPixelBuffer<br/>Frame Conversion"]
+        B --> C["RTCVideoEncoderH264<br/>Hardware Encode"]
+        C --> D["RTCPeerConnection<br/>WebRTC Transport"]
+        E["CADisplayLink<br/>Frame Timer"] --> A
+    end
+    
+    subgraph "Signaling"
+        F["JSCWebSocketServer<br/>(Built-in WS Server)"]
+        G["SRWebSocket<br/>(Client WS)"]
+    end
+    
+    subgraph "Browser (Web IDE)"
+        H["RTCPeerConnection<br/>Receive Stream"]
+        H --> I["Video Element<br/>Live Display"]
+        I --> J["Touch Events<br/>→ WebSocket"]
+    end
+    
+    D <-->|"SRTP/DTLS"| H
+    F <-->|"SDP Offer/Answer<br/>ICE Candidates"| G
+    J -->|"Coordinates"| F
+```
+
+### Screen Capture Pipeline
+
+| Stage | Technology | Detail |
+|---|---|---|
+| **Capture** | `IOSurfaceAccelerator` | Capture system framebuffer — **không phải** chỉ app window |
+| **Frame timing** | `CADisplayLink` (`RTCDisplayLinkTimer`) | Sync với display refresh rate |
+| **Pixel buffer** | `RTCCVPixelBuffer` ← `CVPixelBuffer` | Zero-copy pixel buffer from IOSurface |
+| **Encoding** | `RTCVideoEncoderH264` (VideoToolbox) | Hardware H264 encoding — rất nhanh, ít CPU |
+| **Transport** | `RTCPeerConnection` + SRTP/DTLS | P2P encrypted streaming |
+| **Decoding** | `RTCVideoDecoderH264` (browser) | Hardware decode ở client |
+
+### Signaling & WebSocket
+
+- **Server**: `JSCWebSocketServer` — WebSocket server chạy ngay trong daemon
+- **Client**: `SRWebSocket` (SocketRocket) — mature WebSocket library
+- **Protocol**: SDP Offer/Answer exchange + ICE candidate trickle
+- **Features**: `addTrack`, `addTransceiverOfType`, `removeTrack`, `startRtcEventLog`
+
+### JavaScript API (trong libxxtouch.so)
+
+```javascript
+// Screen module (embedded JS trong binary)
+screen.init(orient)        // Set orientation (0-3)
+screen.keep()              // Capture và giữ frame hiện tại
+screen.unkeep()            // Giải phóng frame
+screen.image(l,t,r,b)     // Crop vùng từ kept frame
+screen.orientation()       // Get current orientation
+screen.is_colors(...)      // Match nhiều color cùng lúc
+screen.is_color(...)       // Alias cho is_colors
+screen.ocr_text(l,t,r,b,opts,binopt)  // OCR vùng chọn
+
+// Native methods exposed:
+screen.captureCanvas()     // Async capture
+screen.captureCanvasSync() // Sync capture  
+screen.size()              // Get screen dimensions
+```
+
+---
+
+## 3️⃣ Touch / Tap Simulation
+
+### IOHIDEvent — Low-level Touch Injection
+
+XXTouch inject touch events trực tiếp vào hệ thống qua **IOHIDEvent API**:
+
+```mermaid
+graph TD
+    A["Lua/JS script<br/>touch.tap(x, y)"] --> B["Coordinate Transform<br/>(orientation-aware)"]
+    B --> C["IOHIDEventCreateDigitizerEvent"]
+    C --> D["IOHIDEventCreateDigitizerFingerEventWithQuality"]
+    D --> E["IOHIDEventAppendEvent"]
+    E --> F["IOHIDEventSystemClientDispatchEvent"]
+    F --> G["System HID Layer<br/>(as if real finger)"]
+```
+
+### IOHIDEvent Functions Used
+
+| Function | Purpose |
+|---|---|
+| `IOHIDEventCreateDigitizerEvent` | Tạo digitizer event container |
+| `IOHIDEventCreateDigitizerFingerEventWithQuality` | Tạo finger touch với pressure/quality |
+| `IOHIDEventCreateKeyboardEvent` | Tạo keyboard event (key_down/key_up) |
+| `IOHIDEventAppendEvent` | Gắn child event vào parent |
+| `IOHIDEventSystemClientCreate` | Tạo HID system client |
+| `IOHIDEventSystemClientDispatchEvent` | **Dispatch event vào hệ thống** |
+| `IOHIDEventSet*Value*` | Set timestamp, flags, sender ID, float/int values |
+
+### Touch JavaScript API
+
+```javascript
+// Coordinate transformation cho orientation
+touch.tap(x, y, delayMs, waitMs)    // Tap tại tọa độ
+touch.on(x, y)                      // Touch down
+touch.off(x, y)                     // Touch up  
+touch.move(x, y)                    // Touch move
+
+// Multi-touch support
+touch.sendMulti(events)  // Array of {x, y, ...} events
+
+// Obj-C bridge methods
+performTouchDown:channel:
+performTouchMove:channel:
+performTouchUp:channel:
+```
+
+> **Key insight**: Touch events được transform theo orientation trước khi dispatch — `transformCoords(evt.x, evt.y)` đảm bảo tọa độ chính xác bất kể device ở portrait hay landscape.
+
+### Toast / Alert UI
+
+| Component | Technology |
+|---|---|
+| **Toast** | `SIAlertView` bundle — custom alert library at `/var/mobile/Media/1ferver/bundles/SIAlertView.bundle/` |
+| **Toast notification** | `SIToastViewDidTapNotification` — tap handler cho toast |
+| **Web Toast** | `XXTUIToastWebWindow` — WKWebView-based toast window |
+| **Web View** | `XXTUIWebViewController` + `XXTUIWebWindow` — full web view overlay |
+| **System Alert** | `UIAlertController` / `UIAlertView` bridge |
+| **Daemon UI** | `XXTUIService.app` hiển thị overlay windows khi locked |
+
+---
+
+## 4️⃣ OCR & OpenCV (Computer Vision)
+
+### Dual OCR Engine
+
+```mermaid
+graph LR
+    subgraph "cv.so"
+        A["OpenCV 3.4.20"] --> B["Image Processing"]
+        C["Paddle-Lite 2.14-rc"] --> D["PaddleOCR<br/>(Neural Network)"]
+        B --> D
+    end
+    
+    subgraph "tess_ocr.so"
+        E["Tesseract 3.02.02"] --> F["Traditional OCR"]
+        G["Leptonica"] --> F
+    end
+    
+    H["screen.ocr_text()"] --> A
+    H --> E
+```
+
+### cv.so — OpenCV + PaddleOCR
+
+| Component | Version | Purpose |
+|---|---|---|
+| **OpenCV** | 3.4.20 | Image processing core |
+| **Paddle-Lite** | 2.14-rc | Deep learning inference (mobile-optimized) |
+| **PaddleOCR** | ppocr_ch model | Chinese + multilingual OCR via neural network |
+| **libjpeg-turbo** | 2.1.2-62 | Fast JPEG decode/encode |
+| **libpng** | 1.6.37 | PNG support |
+| **libwebp** | bundled | WebP support |
+| **quirc** | bundled | QR code detection |
+| **protobuf** | bundled | ML model serialization |
+| **MetalPerformanceShaders** | linked | GPU-accelerated inference |
+
+**Model path**: `/var/mobile/Media/1ferver/models/ppocr_ch`
+
+#### OpenCV Functions (exposed via JSC CanvasRenderingContext2D)
+
+```javascript
+// Polyfill gắn vào CanvasRenderingContext2D.prototype
+ctx.resize(w, h)              // cv::resize
+ctx.resize_copy(w, h)         // cv::resize (copy)
+ctx.find_polygon(...)         // cv::findContours + approxPolyDP
+ctx.compare_image(ref)        // cv::matchTemplate / compare
+ctx.to_shapes(...)            // Contour → shape objects
+ctx.find_shapes(...)          // Find specific shapes
+ctx.detect_templates(tmpl)    // Template matching
+```
+
+**Build info**: Compiled by `/Users/havonz/Projects/opencv-3.4.20/` with OpenMP support.
+
+### tess_ocr.so — Tesseract OCR
+
+| Component | Version | Purpose |
+|---|---|---|
+| **Tesseract** | 3.02.02 | Traditional OCR engine |
+| **Leptonica** | bundled | Image preprocessing (binarization, deskew, etc.) |
+| **Accelerate** | system | SIMD optimization |
+
+**Tessdata path**: `/var/mobile/Media/1ferver/tessdata`
+**Output format**: hOCR (HTML-based OCR format với bounding boxes)
+
+#### OCR API Flow
+
+```javascript
+// High-level API trong screen module
+screen.ocr_text(left, top, right, bottom, options, binopt)
+// 1. Lấy kept canvas context
+// 2. Crop region (normalizeRect)
+// 3. Gọi ctx.ocr_text(options, binopt) — native binding
+// 4. Adjust bounding box coordinates (+ rect.left/top offset)
+// 5. Return [text, [{x, y, w, h, confidence, text}, ...]]
+```
+
+---
+
+## 5️⃣ Scripting Runtime
+
+### Dual Engine: Lua 5.3 + JavaScriptCore
+
+| Engine | File | Use Case |
+|---|---|---|
+| **Lua 5.3** | `1feaks.dylib` (embedded) | User scripts (`.lua`, `.xxt`, `.xpa`) |
+| **JavaScriptCore** | `libxxtouch.so` | Core runtime, WebRTC, screen/touch API |
+
+**Lua module search paths**:
+```
+/usr/bin/1ferver/lib/?.so
+/var/jb/usr/bin/1ferver/lib/?.so
+/var/mobile/Media/1ferver/lib/?.so
+/var/mobile/Media/1ferver/lua/?.lua
+/var/mobile/Media/1ferver/lua/scripts/?.lua
+```
+
+**Native Lua modules**: `ev.so` (event loop — libev), `lpeg.so` / `lpeglabel.so` (parsing), `openssl.so`, `posix.so`, `zip.so`
+
+---
+
+## 📊 Tổng Kết
+
+| Feature | Technology | Maturity |
+|---|---|---|
+| **Daemon** | LaunchDaemon + posix_spawn + process disguise | ⭐⭐⭐⭐⭐ |
+| **WebRTC Streaming** | Native RTCPeerConnection + IOSurface + H264 HW encode | ⭐⭐⭐⭐⭐ |
+| **Signaling** | JSCWebSocketServer + SRWebSocket + SDP/ICE | ⭐⭐⭐⭐ |
+| **Touch Simulation** | IOHIDEvent injection (system-level, bypasses sandbox) | ⭐⭐⭐⭐⭐ |
+| **OCR** | Dual: PaddleOCR (neural) + Tesseract (traditional) | ⭐⭐⭐⭐⭐ |
+| **Computer Vision** | OpenCV 3.4 + Paddle-Lite ML inference | ⭐⭐⭐⭐ |
+| **Scripting** | Lua 5.3 (user) + JSC (runtime) dual engine | ⭐⭐⭐⭐ |
+| **System Hooks** | MobileSubstrate + private frameworks | ⭐⭐⭐⭐⭐ |
+
+> **Đây là architecture rất sophisticated** — kết hợp native WebRTC stack (không phải WebView wrapper), system-level IOHIDEvent injection, dual OCR engine (neural + traditional), và process disguise technique. Toàn bộ được bridge qua JSC runtime cho phép Lua scripts gọi high-level API (`screen.*`, `touch.*`) mà không cần biết implementation chi tiết.

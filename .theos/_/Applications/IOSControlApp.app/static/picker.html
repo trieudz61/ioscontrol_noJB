@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Color Picker — IOSControl</title>
+<style>
+  :root {
+    --bg:#0f0f1a; --surface:#1a1a2e; --surface2:#16213e;
+    --accent:#6c63ff; --green:#34d399; --red:#f87171; --yellow:#fbbf24;
+    --text:#e8e8f0; --subtext:#888899; --border:#2a2a3e;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,sans-serif; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+
+  .topbar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .topbar h1 { font-size:15px; font-weight:600; color:#a78bfa; }
+  .sep { flex:1; }
+  .btn { padding:6px 12px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:500; transition:opacity 0.15s; }
+  .btn:active { opacity:0.7; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+
+  /* ── Main layout: canvas left, panel right ── */
+  .main { display:flex; flex:1; overflow:hidden; }
+
+  /* ── Canvas area ── */
+  .canvas-wrap {
+    flex:1; position:relative; overflow:hidden; background:#050510;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #screen-canvas {
+    image-rendering:pixelated; cursor:crosshair;
+    touch-action:none; max-width:100%; max-height:100%; display:block;
+  }
+  .zoom-badge {
+    position:absolute; bottom:8px; left:8px;
+    background:rgba(0,0,0,0.7); border-radius:6px; padding:3px 8px;
+    font-size:11px; color:var(--subtext); pointer-events:none;
+  }
+  .crosshair {
+    position:absolute; pointer-events:none; display:none;
+    width:16px; height:16px; border:2px solid #fff;
+    border-radius:50%; transform:translate(-50%,-50%);
+    box-shadow:0 0 0 1px #000;
+  }
+
+  /* ── Right panel ── */
+  .panel { width:280px; background:var(--surface); border-left:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; flex-shrink:0; }
+  .panel-section { padding:12px; border-bottom:1px solid var(--border); }
+  .panel-section h3 { font-size:11px; text-transform:uppercase; color:var(--subtext); letter-spacing:0.5px; margin-bottom:8px; }
+
+  /* ── Color preview ── */
+  .color-preview {
+    width:100%; height:60px; border-radius:10px; border:2px solid var(--border);
+    margin-bottom:8px; transition:background 0.1s;
+  }
+  .color-hex { font-size:22px; font-weight:700; font-family:monospace; text-align:center; margin-bottom:4px; }
+  .color-rgb { font-size:12px; color:var(--subtext); text-align:center; }
+  .color-copy { width:100%; margin-top:8px; }
+
+  /* ── Points list ── */
+  .points-list { list-style:none; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  .point-item {
+    display:flex; align-items:center; gap:8px; padding:6px 8px;
+    background:var(--surface2); border-radius:8px; font-size:12px;
+  }
+  .point-swatch { width:24px; height:24px; border-radius:4px; flex-shrink:0; border:1px solid rgba(255,255,255,0.1); }
+  .point-info { flex:1; font-family:monospace; }
+  .point-del { cursor:pointer; color:var(--red); font-size:14px; }
+
+  /* ── Code output ── */
+  .code-out {
+    background:#0a0a14; border-radius:8px; padding:10px;
+    font-family:monospace; font-size:11.5px; line-height:1.6;
+    color:var(--green); white-space:pre; overflow-x:auto;
+    border:1px solid var(--border); max-height:200px; overflow-y:auto;
+  }
+
+  /* ── Controls ── */
+  .control-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .control-row label { font-size:12px; color:var(--subtext); min-width:70px; }
+  input[type=range] { flex:1; accent-color:var(--accent); }
+  .val-badge { font-size:11px; font-family:monospace; color:var(--text); min-width:30px; text-align:right; }
+  input[type=number] { background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); padding:4px 8px; font-size:12px; width:70px; }
+
+  ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🎨 Color Picker</h1>
+  <div class="sep"></div>
+  <button class="btn btn-secondary" id="btn-refresh">🔄 Capture</button>
+  <button class="btn btn-primary" id="btn-add">＋ Add Point</button>
+</div>
+
+<div class="main">
+  <!-- Canvas -->
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="screen-canvas"></canvas>
+    <div class="zoom-badge" id="zoom-badge">100% &nbsp; x:0 y:0</div>
+    <div class="crosshair" id="crosshair"></div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="panel">
+
+    <!-- Current color preview -->
+    <div class="panel-section">
+      <h3>Current Color</h3>
+      <div class="color-preview" id="preview-box"></div>
+      <div class="color-hex" id="preview-hex">#??????</div>
+      <div class="color-rgb" id="preview-rgb">R:? G:? B:?</div>
+      <button class="btn btn-secondary color-copy" id="btn-copy-hex">📋 Copy Hex</button>
+    </div>
+
+    <!-- Tolerance -->
+    <div class="panel-section">
+      <h3>Tolerance</h3>
+      <div class="control-row">
+        <label>Tolerance</label>
+        <input type="range" id="tol-slider" min="0" max="100" value="10">
+        <span class="val-badge" id="tol-val">10</span>
+      </div>
+    </div>
+
+    <!-- Captured points -->
+    <div class="panel-section" style="flex:1">
+      <h3>Picked Points (<span id="point-count">0</span>)</h3>
+      <ul class="points-list" id="points-list"></ul>
+    </div>
+
+    <!-- Generated code -->
+    <div class="panel-section">
+      <h3>Generated Code</h3>
+      <div class="code-out" id="code-out">-- Pick colors to generate code</div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" id="btn-copy-code">📋 Copy Code</button>
+      <button class="btn btn-secondary" style="width:100%;margin-top:6px" id="btn-clear-pts">🗑 Clear All</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const PORT = location.port || 46952;
+const API = `http://${location.hostname}:${PORT}`;
+
+const canvas = document.getElementById('screen-canvas');
+const ctx = canvas.getContext('2d');
+let img = new Image();
+let curX = 0, curY = 0;   // logical points (same as touch.tap)
+let curPx = 0, curPy = 0; // canvas/image pixels (for drawing)
+let curR = 0, curG = 0, curB = 0;
+let points = [];
+
+// Logical screen size (points) from /api/status — matches touch.tap() system
+let pointsW = 0, pointsH = 0;
+
+// Fetch logical screen size once
+fetch(`${API}/api/status`).then(r=>r.json()).then(d=>{
+  pointsW = d.screenWidth || 0;
+  pointsH = d.screenHeight || 0;
+}).catch(()=>{});
+
+// ── Screen capture ──────────────────────────────────────────────────────────
+async function capture() {
+  try {
+    const r = await fetch(`${API}/api/screen?quality=90`);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); drawCanvas(); };
+    img.src = url;
+  } catch(e) { console.error('capture', e); }
+}
+
+function drawCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const maxW = wrap.clientWidth, maxH = wrap.clientHeight;
+  if (!img.width) return;
+
+  // Fit image
+  const scale = Math.min(maxW / img.width, maxH / img.height);
+  canvas.width = img.width;
+  canvas.height = img.height;
+  canvas.style.width = Math.floor(img.width * scale) + 'px';
+  canvas.style.height = Math.floor(img.height * scale) + 'px';
+  ctx.drawImage(img, 0, 0);
+  drawPoints();
+}
+
+function drawPoints() {
+  ctx.drawImage(img, 0, 0);
+  points.forEach((p, i) => {
+    // Use px/py (image pixel) for drawing, x/y (logical) for labels
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 8, 0, Math.PI*2);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = p.hex;
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(i+1, p.px - 4, p.py + 4);
+  });
+}
+
+// canvasToPixel: browser event → image pixel coord (for canvas sampling)
+function canvasToPixel(ex, ey) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    px: Math.round((ex - rect.left) * scaleX),
+    py: Math.round((ey - rect.top)  * scaleY)
+  };
+}
+
+// pixelToPoint: image pixel → logical point (matches touch.tap coordinate system)
+function pixelToPoint(px, py) {
+  const iw = img.width  || 1;
+  const ih = img.height || 1;
+  const pw = pointsW || iw;  // logical width from /api/status
+  const ph = pointsH || ih;  // logical height
+  return {
+    x: Math.round(px * pw / iw),
+    y: Math.round(py * ph / ih)
+  };
+}
+
+// sampleColor: sample at image-pixel coords, update preview and curX/Y (logical)
+function sampleColor(px, py) {
+  if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) return null;
+  const data = ctx.getImageData(px, py, 1, 1).data;
+  curR = data[0]; curG = data[1]; curB = data[2];
+  curPx = px; curPy = py;
+  // Convert to logical point
+  const pt = pixelToPoint(px, py);
+  curX = pt.x; curY = pt.y;
+  const hex = '#' + [curR,curG,curB].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+  document.getElementById('preview-box').style.background = hex;
+  document.getElementById('preview-hex').textContent = hex;
+  document.getElementById('preview-rgb').textContent = `R:${curR} G:${curG} B:${curB}`;
+  const dispScale = canvas.clientWidth / canvas.width;
+  // Show logical point coords in badge (matches touch.tap system)
+  document.getElementById('zoom-badge').textContent =
+    `${Math.round(dispScale*100)}%  pt:${curX},${curY}  px:${px},${py}`;
+  return hex;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const {px, py} = canvasToPixel(e.clientX, e.clientY);
+  if (px<0||py<0||px>=canvas.width||py>=canvas.height) return;
+  sampleColor(px, py);
+  const xh = document.getElementById('crosshair');
+  const wrap = document.getElementById('canvas-wrap');
+  const wr = wrap.getBoundingClientRect();
+  xh.style.display='block';
+  xh.style.left=(e.clientX-wr.left)+'px';
+  xh.style.top=(e.clientY-wr.top)+'px';
+});
+canvas.addEventListener('mouseleave', () => { document.getElementById('crosshair').style.display='none'; });
+canvas.addEventListener('click', addPoint);
+
+// Touch support
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const {px, py} = canvasToPixel(t.clientX, t.clientY);
+  if (px>=0&&py>=0&&px<canvas.width&&py<canvas.height) sampleColor(px, py);
+}, { passive:false });
+canvas.addEventListener('touchend', e => { e.preventDefault(); addPoint(e.changedTouches[0]); }, { passive:false });
+
+// ── Point management ─────────────────────────────────────────────────────────
+document.getElementById('btn-add').addEventListener('click', () => {
+  if (img.width) {
+    const hex = '#'+[curR,curG,curB].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+    addPointAt(curX, curY, curPx, curPy, curR, curG, curB, hex);
+  }
+});
+
+// addPoint from click/touch event
+function addPoint(e) {
+  if (!img.width) return;
+  const {px, py} = canvasToPixel(e.clientX||e.pageX, e.clientY||e.pageY);
+  if (px<0||py<0||px>=canvas.width||py>=canvas.height) return;
+  const hex = sampleColor(px, py);
+  // Store both logical point (for code gen) and pixel (for dot drawing)
+  addPointAt(curX, curY, px, py, curR, curG, curB, hex);
+}
+
+// x,y = logical points; px,py = image pixels (for dot position on canvas)
+function addPointAt(x, y, px, py, r, g, b, hex) {
+  points.push({x, y, px, py, r, g, b, hex});
+  renderPoints();
+  updateCode();
+  drawPoints();
+}
+
+function renderPoints() {
+  const list = document.getElementById('points-list');
+  list.innerHTML = '';
+  document.getElementById('point-count').textContent = points.length;
+  points.forEach((p,i) => {
+    const li = document.createElement('li');
+    li.className = 'point-item';
+    // Show logical point coords (matches touch.tap system)
+    li.innerHTML = `
+      <div class="point-swatch" style="background:${p.hex}"></div>
+      <div class="point-info"><b>${p.hex}</b><br>tap(${p.x}, ${p.y}) rgb(${p.r},${p.g},${p.b})</div>
+      <span class="point-del" data-i="${i}">✕</span>`;
+    list.appendChild(li);
+  });
+  list.querySelectorAll('.point-del').forEach(el => {
+    el.addEventListener('click', () => { points.splice(+el.dataset.i,1); renderPoints(); updateCode(); drawPoints(); });
+  });
+}
+
+function updateCode() {
+  const tol = +document.getElementById('tol-slider').value;
+  const out = document.getElementById('code-out');
+  if (points.length === 0) { out.textContent = '-- Pick colors to generate code'; return; }
+  if (points.length === 1) {
+    const p = points[0];
+    out.textContent = `-- find_color\nlocal x, y = screen.find_color(${p.r}, ${p.g}, ${p.b}, ${tol})\nif x then\n  sys.log("Found at " .. x .. "," .. y)\nend`;
+  } else {
+    const lines = ['-- Multi-color search'];
+    lines.push(`local colors = {`);
+    points.forEach(p => lines.push(`  {x=${p.x}, y=${p.y}, r=${p.r}, g=${p.g}, b=${p.b}},`));
+    lines.push(`}`);
+    lines.push(`-- Use find_multi_color for each color:`);
+    points.forEach(p => lines.push(`local x${p.x}, y${p.y} = screen.find_color(${p.r}, ${p.g}, ${p.b}, ${tol})`));
+    out.textContent = lines.join('\n');
+  }
+}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+document.getElementById('tol-slider').addEventListener('input', e => {
+  document.getElementById('tol-val').textContent = e.target.value;
+  updateCode();
+});
+document.getElementById('btn-refresh').addEventListener('click', capture);
+document.getElementById('btn-copy-hex').addEventListener('click', () => {
+  const h = document.getElementById('preview-hex').textContent;
+  navigator.clipboard.writeText(h).catch(()=>{ const ta=document.createElement('textarea'); ta.value=h; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); });
+});
+document.getElementById('btn-copy-code').addEventListener('click', () => {
+  const code = document.getElementById('code-out').textContent;
+  navigator.clipboard.writeText(code).catch(()=>{});
+});
+document.getElementById('btn-clear-pts').addEventListener('click', () => {
+  points = []; renderPoints(); updateCode(); drawPoints();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+capture();
+window.addEventListener('resize', drawCanvas);
+</script>
+</body>
+</html>

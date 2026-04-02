@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta http-equiv="X-UA-Compatible" content="edge" />
+  <meta name="renderer" content="webkit" />
+  <title>XXTouch</title>
+  <link rel="apple-touch-icon" href="/xxtouch.png" />
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="mdui/js/mdui.min.js"></script>
+  <script type="text/javascript" src="js/clipboard.min.js"></script>
+  <script type="text/javascript" src="js/xxtouch_web.js"></script>
+  <script type="text/javascript" src="js/jcanvas.min.js"></script>
+  <script type="text/javascript" src="js/pako.min.js"></script>
+  <script type="text/javascript" src="js/UPNG.js"></script>
+  <script type="text/javascript" src="js/matrix_helpers.js"></script>
+  <script type="text/javascript" src="picker.js"></script>
+  <link rel="stylesheet" href="mdui/css/mdui.min.css" />
+  <link rel="stylesheet" href="css/xxtouch_web.css" />
+  <link rel="stylesheet" href="css/matrix_common.css" />
+  <link rel="icon" href="/xxtouch.png" type="image/png" />
+  <style>
+    /* 页面特定样式 - 通用样式已移至 matrix_common.css */
+    html, body { overflow: hidden; overscroll-behavior-y: none; }
+    .matrix-container {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: none;
+      min-width: fit-content;
+      gap: 4px;
+      padding: 6px;
+    }
+    .matrix-panel { padding: 8px; min-height: 0; }
+    .matrix-panel h3 { margin-bottom: 6px; }
+    .matrix-canvas-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+    .matrix-canvas-header h3 { margin: 0; flex: 1 1 auto; min-width: 240px; }
+    .matrix-canvas-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .matrix-canvas-actions .matrix-btn { padding: 4px 9px; font-size: 11px; line-height: 1.2; }
+    .matrix-canvas-actions .matrix-btn.secondary.is-active {
+      background: linear-gradient(120deg, #3c96de 0%, #5aabe8 100%);
+      color: #fff;
+      border-color: rgba(60, 150, 222, 0.88);
+      box-shadow: 0 8px 20px rgba(60, 150, 222, 0.25);
+    }
+    .matrix-magnifier { margin-bottom: 8px; padding-bottom: 7px; }
+    .matrix-field { margin-bottom: 6px; }
+    .matrix-list-section { margin-top: 6px; padding-top: 6px; }
+    .matrix-panel-params { width: 280px; min-width: 280px; flex-shrink: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+    .matrix-panel-result { width: 280px; min-width: 280px; flex-shrink: 0; min-height: 0; overflow-y: auto; }
+    .matrix-canvas-wrapper { min-height: 420px; }
+
+    #all_canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+    #hide_canvas { display: none; }
+    #all_div.panning { cursor: grabbing !important; }
+
+    .matrix-zoom-info { position: absolute; bottom: 12px; left: 12px; background: rgba(31, 31, 31, 0.8); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-family: var(--md-mono); pointer-events: none; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18); }
+
+    /* 区块样式 */
+    .matrix-block { border: 1px solid var(--md-border); border-radius: 10px; padding: 8px; background: #f8fcfe; margin-bottom: 5px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7); }
+    .matrix-color-block { border: none; padding: 0; background: transparent; box-shadow: none; margin-bottom: 5px; flex-shrink: 0; }
+    .matrix-color-block.flex-expand { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 260px; margin-bottom: 0; overflow: hidden; }
+    .matrix-color-block.flex-expand .matrix-color-list { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+    .matrix-block-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .matrix-block-header .matrix-btn { padding: 4px 8px; font-size: 11px; }
+    .matrix-block-title { font-size: 14px; color: var(--md-text); display: flex; align-items: center; gap: 6px; }
+    .matrix-block-title i { color: var(--md-ink); font-size: 18px; }
+
+    /* 点色列表样式 */
+    .matrix-color-list { overflow-y: auto; border: 1px solid var(--md-border); border-radius: 8px; background: #f8fcfe; margin-bottom: 0; flex: 1; }
+    .matrix-color-list:empty { display: none; }
+    .matrix-color-list-actions { display: flex; gap: 6px; margin-bottom: 6px; }
+    .matrix-color-list-actions button { padding: 4px 8px; font-size: 11px; }
+    .matrix-color-header, .matrix-color-item { display: grid; grid-template-columns: 24px 28px minmax(85px, 1fr) 1fr auto; align-items: center; gap: 6px; padding: 6px 8px; }
+    .matrix-color-header { border-bottom: 1px solid var(--md-border); font-size: 11px; color: var(--md-muted); background: #f5fafd; position: sticky; top: 0; z-index: 1; }
+    .matrix-color-item { border-bottom: 1px solid var(--md-border); font-size: 12px; font-family: var(--md-mono); cursor: grab; transition: background 0.1s; }
+    .matrix-color-item:last-child { border-bottom: none; }
+    .matrix-color-item:hover { background: #eaf4fa; }
+    .matrix-color-item.dragging { opacity: 0.6; background: rgba(60, 150, 222, 0.1); }
+    .matrix-color-item.drag-over { border-top: 2px solid var(--md-ink); }
+    .matrix-color-swatch { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--md-border); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6); flex-shrink: 0; justify-self: center; }
+    .matrix-color-info { display: flex; flex-direction: column; gap: 2px; line-height: 1.3; }
+    .matrix-color-pos { color: var(--md-text); white-space: nowrap; }
+    .matrix-color-hex { color: var(--md-muted); font-size: 11px; white-space: nowrap; }
+    .matrix-color-actions { display: flex; align-items: center; gap: 6px; justify-self: end; }
+    .matrix-delete-btn { border: none; background: transparent; color: var(--md-muted); font-size: 16px; cursor: pointer; opacity: 0; transition: opacity 0.1s, color 0.1s; }
+    .matrix-color-item:hover .matrix-delete-btn, .matrix-selection-item:hover .matrix-delete-btn { opacity: 1; }
+    .matrix-delete-btn:hover { color: var(--md-accent); }
+    .drag-handle { display: none; }
+    .matrix-color-index { font-size: 11px; font-weight: 500; color: var(--md-muted); text-align: center; user-select: none; }
+    .matrix-color-pos, .matrix-color-hex { cursor: pointer; padding: 4px 6px; border-radius: 4px; transition: background 0.1s, color 0.1s; display: inline-block; }
+    .matrix-color-pos:hover, .matrix-color-hex:hover { color: var(--md-ink); background: rgba(60, 150, 222, 0.1); }
+    .matrix-color-pos:active, .matrix-color-hex:active { background: rgba(60, 150, 222, 0.2); }
+
+    /* textarea 样式 */
+    textarea { width: 100%; border: 1px solid var(--md-border); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; background: #f8fcfe; font-family: var(--md-mono); font-size: 13px; line-height: 1.4; color: var(--md-text); resize: vertical; user-select: text; }
+    textarea:focus { outline: none; border-color: var(--md-ink); box-shadow: 0 0 0 2px rgba(60, 150, 222, 0.15); }
+
+    /* 点色记录圆盘 */
+    #pk-recordSlotPicker { position: fixed; z-index: 10000; width: 0; height: 0; pointer-events: none; }
+    #pk-recordSlotPickerCancel {
+      position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 9999px; border: none;
+      transform: translate(-50%, -50%) scale(0.05); opacity: 0; pointer-events: auto; cursor: pointer;
+      background: rgba(74, 80, 94, 0.92); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.18), 0 10px 24px rgba(13, 18, 32, 0.28);
+      transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.2s ease;
+      touch-action: manipulation;
+    }
+    #pk-recordSlotPickerCancel::before,
+    #pk-recordSlotPickerCancel::after {
+      content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 2px; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94); transform: translate(-50%, -50%) rotate(45deg);
+    }
+    #pk-recordSlotPickerCancel::after { transform: translate(-50%, -50%) rotate(-45deg); }
+    .pk-record-slot-btn {
+      position: absolute; left: 0; top: 0; width: 33px; height: 33px; border-radius: 9999px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.62); background: rgba(248, 250, 255, 0.96);
+      color: #22314b; font-size: 13px; font-weight: 500; font-family: system-ui, -apple-system, sans-serif;
+      pointer-events: auto; touch-action: manipulation; user-select: none; -webkit-appearance: none; appearance: none;
+      transform: translate(-50%, -50%) scale(0.05); opacity: 0; padding: 0;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(28, 36, 54, 0.18), 0 10px 22px rgba(15, 24, 40, 0.14);
+      transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1), opacity 0.2s ease, background-color 0.12s ease, color 0.12s ease;
+      transition-delay: calc(var(--slot-index, 0) * 12ms);
+    }
+    .pk-record-slot-btn:active { background: var(--md-ink); color: #fff; }
+    #pk-recordSlotPicker.is-open #pk-recordSlotPickerCancel { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    #pk-recordSlotPicker.is-open .pk-record-slot-btn {
+      transform: translate(calc(-50% + var(--slot-x, 0px)), calc(-50% + var(--slot-y, 0px))) scale(1); opacity: 1;
+    }
+    #pk-recordSlotPicker.is-closing #pk-recordSlotPickerCancel { transform: translate(-50%, -50%) scale(0.05); opacity: 0; }
+    #pk-recordSlotPicker.is-closing .pk-record-slot-btn {
+      transform: translate(-50%, -50%) scale(0.05); opacity: 0; transition-delay: calc((4 - var(--slot-index, 0)) * 10ms);
+    }
+  </style>
+</head>
+
+<body class="mdui-drawer-body-left mdui-appbar-with-toolbar mdui-theme-primary-blue mdui-theme-accent-deep-orange">
+  <div class="mdui-drawer" id="main-drawer"></div>
+  <header class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-xxtouch-color">
+      <span class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-drawer="{target: '#main-drawer'}"><i
+          class="mdui-icon material-icons"></i></span>
+      <a href="./index.html" class="mdui-typo-headline mdui-hidden-xs">XXTouch</a>
+      <a href="" class="mdui-typo-title">抓色器</a>
+      <div class="mdui-toolbar-spacer"></div>
+      <div href="javascript:;" id="snapshot" class="mdui-btn mdui-btn-icon" title="截图">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+      <div href="javascript:;" id="open" class="mdui-btn mdui-btn-icon" title="打开图片">
+        <i class="mdui-icon material-icons">&#xe2c8;</i>
+      </div>
+      <div href="javascript:;" id="save" class="mdui-btn mdui-btn-icon" title="保存当前视图">
+        <i class="mdui-icon material-icons">&#xe161;</i>
+      </div>
+      <div href="javascript:;" id="set" class="mdui-btn mdui-btn-icon" title="设置">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+      <div href="javascript:;" id="clear" class="mdui-btn mdui-btn-icon" title="关闭图片">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+    </div>
+  </header>
+  <div class="matrix-container">
+    <div class="matrix-panel matrix-panel-left">
+      <div class="matrix-canvas-header">
+        <h3><i class="mdui-icon material-icons">&#xe3f4;</i>画布与取色<span id="pk-imageSizeInfo"
+            style="margin-left:12px;font-size:12px;font-weight:normal;color:var(--md-muted);"></span></h3>
+        <div class="matrix-canvas-actions">
+          <button id="rotate" class="matrix-btn secondary" title="向左旋转90°">向左旋转90°</button>
+          <button id="pk-armedRecordBtn" class="matrix-btn secondary" title="点色记录模式">点色记录</button>
+          <button id="pk-armedShiftBtn" class="matrix-btn secondary" title="Shift选区模式">Shift选区</button>
+          <button id="pk-armedMetaBtn" class="matrix-btn secondary" title="Meta选区模式">Meta选区</button>
+        </div>
+      </div>
+      <div id="all_div" class="matrix-canvas-wrapper">
+        <canvas id="all_canvas"></canvas>
+        <canvas id="hide_canvas"></canvas>
+        <div id="zoom_info" class="matrix-zoom-info">100%</div>
+      </div>
+      <p class="matrix-hint">左键拖动图像平移，滚轮缩放，单击取色；触屏单指平移、双指缩放；Shift+拖拽框选小图像（右键拖拽选框平移）；⌘+拖拽设置范围（⌘+右键拖拽选框平移）；⌘/Ctrl+V 粘贴剪贴板图片</p>
+    </div>
+    <div class="matrix-panel matrix-panel-params">
+      <div id="message_div" class="matrix-magnifier">
+        <div class="matrix-magnifier-title">
+          <i class="mdui-icon material-icons">&#xe8b6;</i>
+          <span>放大镜</span>
+        </div>
+        <div class="matrix-magnifier-content">
+          <canvas id="pk-magnifierCanvas" class="matrix-magnifier-canvas" width="120" height="120"></canvas>
+          <div class="matrix-magnifier-info">
+            <div>坐标: <span id="pk-magnifierCoord" class="coord">--</span></div>
+            <div class="color-box">
+              <span>颜色:</span>
+              <span id="pk-magnifierSwatch" class="color-swatch" style="background:#888"></span>
+              <span id="pk-magnifierHex" class="coord">0x------</span>
+            </div>
+            <div>RGB: <span id="pk-magnifierRgb" class="coord">--</span></div>
+          </div>
+        </div>
+        <div class="matrix-magnifier-controls">
+          <label>放大倍数:</label>
+          <input id="pk-magnifierZoom" type="range" min="4" max="20" value="10">
+          <span id="pk-magnifierZoomLabel">10x</span>
+        </div>
+        <div id="message" style="display:none;"></div>
+      </div>
+      <!-- 点色列表 -->
+      <div class="matrix-block matrix-color-block flex-expand" style="margin-top:0px;">
+        <div class="matrix-block-header" style="padding-bottom:8px;">
+          <div class="matrix-block-title"><i class="mdui-icon material-icons"
+              style="color:#e35f4a;">&#xe23a;</i><span>点色列表</span><span id="pk-colorCount"
+              style="margin-left:8px;font-size:12px;color:var(--md-muted);font-weight:normal;">(0 点)</span></div>
+        </div>
+        <div class="matrix-color-list-actions">
+          <button id="pk-markPointsBtn" class="matrix-btn secondary">标记</button>
+          <button id="pk-importColorBtn" class="matrix-btn secondary">导入</button>
+          <button id="pk-randomColorBtn" class="matrix-btn secondary">随机取色</button>
+          <button id="pk-repickColorsBtn" class="matrix-btn secondary">重新取色</button>
+          <button id="pk-clearColorListBtn" class="matrix-btn secondary">清空</button>
+        </div>
+        <div class="matrix-color-list">
+          <div class="matrix-color-header">
+            <span style="text-align:center;">#</span>
+            <span style="width:28px;">&nbsp;</span>
+            <span style="flex:1;">&nbsp;&nbsp;&nbsp;坐标</span>
+            <span style="flex:1;">&nbsp;&nbsp;&nbsp;颜色值</span>
+            <span></span>
+          </div>
+          <div id="color_list"></div>
+        </div>
+        <p class="matrix-hint" style="margin-top:6px;font-size:10px;">鼠标指向图像，点击或按 <code>0</code> 取色，按 <code>M</code>
+          平移点色列表所有点</p>
+      </div>
+      <!-- 选区记录 -->
+      <div class="matrix-block matrix-color-block" style="margin-top:4px;margin-bottom:0;">
+        <div class="matrix-block-header" style="padding-bottom:8px;">
+          <div class="matrix-block-title"><i class="mdui-icon material-icons"
+              style="color:#00796b;">&#xe3c9;</i><span>选区记录</span></div>
+        </div>
+        <div class="matrix-selection-list"
+          style="border:1px solid var(--md-border);border-radius:8px;background:#f8fcfe;">
+          <div class="matrix-selection-header"
+            style="display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-border);font-size:11px;color:var(--md-muted);background:#f5fafd;">
+            <span>类型</span>
+            <span style="text-align:center;">left, top, right, bottom</span>
+            <span></span>
+          </div>
+          <div class="matrix-selection-item"
+            style="display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--md-border);font-size:12px;font-family:var(--md-mono);">
+            <span style="color:#e35f4a;font-weight:500;">Shift框</span>
+            <span id="pk-shiftSelectionCoord" title="点击拷贝" style="cursor:pointer;text-align:center;">0, 0, 0, 0</span>
+            <button id="pk-clearShiftSelection" class="matrix-delete-btn" title="清除">×</button>
+          </div>
+          <div class="matrix-selection-item"
+            style="display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:6px;padding:6px 8px;font-size:12px;font-family:var(--md-mono);">
+            <span style="color:#3c96de;font-weight:500;">Meta框</span>
+            <span id="pk-metaSelectionCoord" title="点击拷贝" style="cursor:pointer;text-align:center;">0, 0, 0, 0</span>
+            <button id="pk-clearMetaSelection" class="matrix-delete-btn" title="清除">×</button>
+          </div>
+        </div>
+        <p class="matrix-hint" style="margin-top:6px;font-size:10px;"><code>右键拖动</code>
+          可平移红框，<code>Meta/Ctrl+右键拖动</code> 可平移黑框</p>
+      </div>
+      <!-- 点色记录 -->
+      <div class="matrix-block matrix-color-block" style="margin-top:4px;margin-bottom:0;">
+        <div class="matrix-block-header" style="padding-bottom:8px;">
+          <div class="matrix-block-title"><i class="mdui-icon material-icons"
+              style="color:#9c27b0;">&#xe3b0;</i><span>点色记录</span><span id="pk-recordCount"
+              style="margin-left:8px;font-size:12px;color:var(--md-muted);font-weight:normal;">(0/5 点)</span></div>
+        </div>
+        <div class="matrix-color-list-actions">
+          <button id="pk-markRecordsBtn" class="matrix-btn secondary">标记</button>
+          <button id="pk-exportRecordsBtn" class="matrix-btn secondary">导出到点色列表</button>
+          <button id="pk-repickRecordsBtn" class="matrix-btn secondary">重新取色</button>
+          <button id="pk-clearRecordsBtn" class="matrix-btn secondary">清空</button>
+        </div>
+        <div class="matrix-color-list" style="max-height:220px;">
+          <div class="matrix-color-header">
+            <span style="text-align:center;">#</span>
+            <span style="width:28px;">&nbsp;</span>
+            <span style="flex:1;">&nbsp;&nbsp;&nbsp;坐标</span>
+            <span style="flex:1;">&nbsp;&nbsp;&nbsp;颜色值</span>
+            <span></span>
+          </div>
+          <div id="color_record_list"></div>
+        </div>
+        <p class="matrix-hint" style="margin-top:6px;font-size:10px;">鼠标指向图像，按数字键 <code>1</code>-<code>5</code> 设置对应点色记录
+        </p>
+      </div>
+    </div>
+    <div class="matrix-panel matrix-panel-result">
+      <h3
+        style="margin:0 0 6px;font-size:15px;font-weight:500;color:var(--md-text);display:flex;align-items:center;gap:8px;">
+        <i class="mdui-icon material-icons" style="font-size:18px;color:var(--md-ink);">&#xe86f;</i>
+        <span>代码模板</span>
+        <button id="pk-templateConfigBtn" class="matrix-btn secondary"
+          style="margin-left:auto;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:4px;"
+          title="模板配置"><i class="mdui-icon material-icons" style="font-size:14px;">&#xe8b8;</i>配置</button>
+      </h3>
+      <div class="matrix-block" style="margin-bottom:4px;">
+        <div class="matrix-block-header" style="flex-direction:column;align-items:stretch;gap:8px;">
+          <div class="matrix-block-title" style="font-size:13px;"><span>图像代码模板</span></div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <button id="find_image_gen" class="matrix-btn secondary" style="width:100%;font-size:12px;">生成 find_image
+              代码</button>
+            <button id="load_data_gen" class="matrix-btn secondary" style="width:100%;font-size:12px;">生成 load_data
+              代码</button>
+            <button id="save_region_image" class="matrix-btn secondary"
+              style="width:100%;font-size:12px;">保存区域图像</button>
+          </div>
+        </div>
+      </div>
+      <div class="matrix-block" style="margin-bottom:4px;">
+        <!-- 模板 1 -->
+        <div class="matrix-block-header">
+          <div class="matrix-block-title" style="font-size:13px;"><span>模板 1</span></div>
+          <button id="tpl1_cp" data-clipboard-text="" class="matrix-btn secondary cp"
+            style="padding:4px 8px;font-size:11px;">拷贝</button>
+        </div>
+        <details style="margin-bottom:6px;">
+          <summary style="font-size:11px;color:var(--md-muted);cursor:pointer;user-select:none;">编辑模板</summary>
+          <textarea id="tpl1_tpl" rows="2" style="font-size:11px;margin-top:4px;" placeholder="模板"></textarea>
+        </details>
+        <textarea id="tpl1" rows="2" readonly style="font-size:11px;background:#f0f6fa;"></textarea>
+        <!-- 模板 2 -->
+        <div class="matrix-block-header" style="margin-top:6px;">
+          <div class="matrix-block-title" style="font-size:13px;"><span>模板 2</span></div>
+          <button id="tpl2_cp" data-clipboard-text="" class="matrix-btn secondary cp"
+            style="padding:4px 8px;font-size:11px;">拷贝</button>
+        </div>
+        <details style="margin-bottom:6px;">
+          <summary style="font-size:11px;color:var(--md-muted);cursor:pointer;user-select:none;">编辑模板</summary>
+          <textarea id="tpl2_tpl" rows="2" style="font-size:11px;margin-top:4px;" placeholder="模板"></textarea>
+        </details>
+        <textarea id="tpl2" rows="2" readonly style="font-size:11px;background:#f0f6fa;"></textarea>
+        <!-- 模板 3 -->
+        <div class="matrix-block-header" style="margin-top:6px;">
+          <div class="matrix-block-title" style="font-size:13px;"><span>模板 3</span></div>
+          <button id="tpl3_cp" data-clipboard-text="" class="matrix-btn secondary cp"
+            style="padding:4px 8px;font-size:11px;">拷贝</button>
+        </div>
+        <details style="margin-bottom:6px;">
+          <summary style="font-size:11px;color:var(--md-muted);cursor:pointer;user-select:none;">编辑模板</summary>
+          <textarea id="tpl3_tpl" rows="2" style="font-size:11px;margin-top:4px;" placeholder="模板"></textarea>
+        </details>
+        <textarea id="tpl3" rows="2" readonly style="font-size:11px;background:#f0f6fa;"></textarea>
+        <!-- 模板 4 -->
+        <div class="matrix-block-header" style="margin-top:6px;">
+          <div class="matrix-block-title" style="font-size:13px;"><span>模板 4</span></div>
+          <button id="tpl4_cp" data-clipboard-text="" class="matrix-btn secondary cp"
+            style="padding:4px 8px;font-size:11px;">拷贝</button>
+        </div>
+        <details style="margin-bottom:6px;">
+          <summary style="font-size:11px;color:var(--md-muted);cursor:pointer;user-select:none;">编辑模板</summary>
+          <textarea id="tpl4_tpl" rows="2" style="font-size:11px;margin-top:4px;" placeholder="模板"></textarea>
+        </details>
+        <textarea id="tpl4" rows="2" readonly style="font-size:11px;background:#f0f6fa;"></textarea>
+        <!-- 模板 5 -->
+        <div class="matrix-block-header" style="margin-top:6px;">
+          <div class="matrix-block-title" style="font-size:13px;"><span>模板 5</span></div>
+          <button id="tpl5_cp" data-clipboard-text="" class="matrix-btn secondary cp"
+            style="padding:4px 8px;font-size:11px;">拷贝</button>
+        </div>
+        <details style="margin-bottom:6px;">
+          <summary style="font-size:11px;color:var(--md-muted);cursor:pointer;user-select:none;">编辑模板</summary>
+          <textarea id="tpl5_tpl" rows="2" style="font-size:11px;margin-top:4px;" placeholder="模板"></textarea>
+        </details>
+        <textarea id="tpl5" rows="2" readonly style="font-size:11px;background:#f0f6fa;"></textarea>
+      </div>
+      <details class="matrix-hint" style="margin-top:4px;font-size:10px;">
+        <summary style="cursor:pointer;user-select:none;">模板变量说明</summary>
+        <table style="margin-top:6px;width:100%;border-collapse:collapse;font-size:11px;">
+          <thead>
+            <tr style="background:#f0f6fa;">
+              <th style="padding:6px 8px;text-align:left;border:1px solid var(--md-border);font-weight:500;">变量</th>
+              <th style="padding:6px 8px;text-align:left;border:1px solid var(--md-border);font-weight:500;">说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$pointInitList</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">原始点列表</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$pointList</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">相对点列表</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$xMin</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">最小横坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$yMin</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">最小纵坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$xMax</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">最大横坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$yMax</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">最大纵坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$xFirst</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">起始横坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$yFirst</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">起始纵坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$point[n].x</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">第 n 点的横坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$point[n].y</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">第 n 点的纵坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$point[n].c</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">第 n 点的颜色值</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$recordInitList</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">点色记录原始点列表</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$recordList</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">点色记录相对点列表</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$record[n].x</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">点色记录第 n 点横坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$record[n].y</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">点色记录第 n 点纵坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$record[n].c</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">点色记录第 n 点颜色值</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$shiftRect.left</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">shiftRect 左边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$shiftRect.top</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">shiftRect 上边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$shiftRect.right</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">shiftRect 右边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$shiftRect.bottom</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">shiftRect 下边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$shiftRectImgData</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">shiftRect hex 图像数据</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$metaRect.left</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">metaRect 左边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$metaRect.top</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">metaRect 上边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$metaRect.right</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">metaRect 右边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$metaRect.bottom</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">metaRect 下边界坐标</td>
+            </tr>
+            <tr>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);font-family:var(--md-mono);">
+                <code>$metaRectImgData</code>
+              </td>
+              <td style="padding:5px 8px;border:1px solid var(--md-border);">metaRect hex 图像数据</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+  </div>
+  <div id="pk-recordSlotPicker" aria-hidden="true">
+    <button type="button" id="pk-recordSlotPickerCancel" aria-label="取消"></button>
+    <button type="button" class="pk-record-slot-btn" data-slot="1" style="--slot-x:0px;--slot-y:-42px;--slot-index:0;">1</button>
+    <button type="button" class="pk-record-slot-btn" data-slot="2" style="--slot-x:39.9px;--slot-y:-13px;--slot-index:1;">2</button>
+    <button type="button" class="pk-record-slot-btn" data-slot="3" style="--slot-x:24.7px;--slot-y:34px;--slot-index:2;">3</button>
+    <button type="button" class="pk-record-slot-btn" data-slot="4" style="--slot-x:-24.7px;--slot-y:34px;--slot-index:3;">4</button>
+    <button type="button" class="pk-record-slot-btn" data-slot="5" style="--slot-x:-39.9px;--slot-y:-13px;--slot-index:4;">5</button>
+  </div>
+  <div id="pk-toast" class="matrix-toast"></div>
+  <!-- 设置弹窗 -->
+  <div id="pk-settingsModal" class="matrix-code-modal">
+    <div class="matrix-code-modal-content">
+      <div class="matrix-code-modal-header">
+        <h3>设置</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeSettingsModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:6px;">截图默认旋转方向</label>
+          <div id="pk-snapshotOrientBtns" style="display:flex;gap:6px;">
+            <button type="button" class="matrix-orient-btn active" data-orient="0">Home在下</button>
+            <button type="button" class="matrix-orient-btn" data-orient="3">Home在上</button>
+            <button type="button" class="matrix-orient-btn" data-orient="1">Home在右</button>
+            <button type="button" class="matrix-orient-btn" data-orient="2">Home在左</button>
+          </div>
+        </div>
+        <div class="matrix-field" style="margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;">
+            <input type="checkbox" id="pk-remoteSnapshotEnabled"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--md-ink);">
+            <span>从其它设备截图</span>
+          </label>
+          <div id="pk-remoteSnapshotSettings" style="display:none;margin-top:8px;">
+            <div class="matrix-field-row">
+              <div class="matrix-field">
+                <label for="pk-remoteHost">设备地址</label>
+                <input id="pk-remoteHost" type="text" placeholder="例如: 192.168.1.100">
+              </div>
+              <div class="matrix-field" style="max-width:120px;">
+                <label for="pk-remotePort">端口</label>
+                <input id="pk-remotePort" type="number" value="46952" placeholder="46952">
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--md-accent);margin:6px 0 0;"><i class="mdui-icon material-icons"
+                style="font-size:14px;vertical-align:middle;margin-right:2px;">&#xe002;</i>需要在目标设备上打开 XXT → 更多 → 用户偏好设置
+              → 跨域访问 → 允许</p>
+          </div>
+        </div>
+        <div id="pk-savePathSettingWrapper" class="matrix-field" style="margin-top:10px;display:none;">
+          <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;">
+            <input type="checkbox" id="pk-savePathEnabled"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--md-ink);">
+            <span>指定图片保存路径</span>
+          </label>
+          <div id="pk-savePathSettings" style="display:none;margin-top:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="pk-savePathDisplay" type="text" placeholder="未选择保存路径" readonly
+                style="flex:1;background:#f0f6fa;cursor:default;">
+              <button type="button" class="matrix-btn secondary" id="pk-selectSavePathBtn"
+                style="white-space:nowrap;">选择文件夹</button>
+            </div>
+            <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0;"><i class="mdui-icon material-icons"
+                style="font-size:14px;vertical-align:middle;margin-right:2px;">&#xe88e;</i>授权后，保存图片将直接写入指定文件夹，无需下载确认</p>
+          </div>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-settingsCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-settingsSaveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+  <!-- 随机取色弹窗 -->
+  <div id="pk-randomColorModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>随机取色</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeRandomColorModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:8px;">选择随机取色点数</label>
+          <div id="pk-randomColorBtns" style="display:flex;flex-wrap:wrap;gap:6px;">
+            <button type="button" class="matrix-orient-btn active" data-count="1">1 点</button>
+            <button type="button" class="matrix-orient-btn" data-count="10">10 点</button>
+            <button type="button" class="matrix-orient-btn" data-count="25">25 点</button>
+            <button type="button" class="matrix-orient-btn" data-count="50">50 点</button>
+            <button type="button" class="matrix-orient-btn" data-count="75">75 点</button>
+            <button type="button" class="matrix-orient-btn" data-count="custom">自定义</button>
+          </div>
+          <div id="pk-customCountWrapper" style="display:none;margin-top:10px;">
+            <label style="font-size:12px;color:var(--md-muted);margin-bottom:4px;display:block;">输入点数 (1-1000)</label>
+            <input type="number" id="pk-customRandomCount" min="1" max="1000" value="100"
+              style="width:100%;padding:8px 10px;border:1px solid var(--md-border);border-radius:8px;font-size:13px;font-family:var(--md-mono);background:#f8fcfe;box-sizing:border-box;">
+          </div>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-randomColorCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-randomColorConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+  <!-- 导入点色弹窗 -->
+  <div id="pk-importColorModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:500px;">
+      <div class="matrix-code-modal-header">
+        <h3>导入点色</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeImportColorModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:8px;">粘贴点色数据</label>
+          <textarea id="pk-importColorText" rows="10" placeholder="支持以下格式:
+
+1. Lua 表格式:
+{
+  {653,367,0x0e43c1},
+  {683,380,0x4669cc},
+}
+
+2. 单行格式:
+{653,367,0x0e43c1}, {683,380,0x4669cc}
+
+3. 简单格式:
+653,367,0x0e43c1
+683,380,0x4669cc" style="font-family:var(--md-mono);font-size:12px;"></textarea>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-importColorCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-importColorConfirmBtn">导入</button>
+      </div>
+    </div>
+  </div>
+  <!-- find_image 预览弹窗 -->
+  <div id="pk-findImageModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:600px;">
+      <div class="matrix-code-modal-header">
+        <h3>find_image 预览</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeFindImageModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body" style="text-align:center;">
+        <div id="pk-findImagePreviewContainer"
+          style="margin-bottom:16px;padding:12px;background:#f8fcfe;border:1px solid var(--md-border);border-radius:8px;display:inline-block;">
+          <img id="pk-findImagePreviewImg" src="" alt="预览图像"
+            style="max-width:100%;max-height:300px;display:block;image-rendering:pixelated;" />
+        </div>
+        <div class="matrix-field">
+          <label>生成的代码</label>
+          <textarea id="pk-findImageCode" rows="4" readonly
+            style="font-family:var(--md-mono);font-size:12px;"></textarea>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-findImageSaveBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe161;</i>保存图像</button>
+        <button type="button" class="matrix-btn" id="pk-findImageCopyBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe14d;</i>拷贝代码</button>
+      </div>
+    </div>
+  </div>
+  <div id="pk-loadDataModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:600px;">
+      <div class="matrix-code-modal-header">
+        <h3>load_data 预览</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeLoadDataModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body" style="text-align:center;">
+        <div id="pk-loadDataPreviewContainer"
+          style="margin-bottom:16px;padding:12px;background:#f8fcfe;border:1px solid var(--md-border);border-radius:8px;display:inline-block;">
+          <img id="pk-loadDataPreviewImg" src="" alt="预览图像"
+            style="max-width:100%;max-height:300px;display:block;image-rendering:pixelated;" />
+        </div>
+        <div class="matrix-field">
+          <label>生成的代码</label>
+          <textarea id="pk-loadDataCode" rows="4" readonly
+            style="font-family:var(--md-mono);font-size:12px;"></textarea>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-loadDataSaveBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe161;</i>保存图像</button>
+        <button type="button" class="matrix-btn" id="pk-loadDataCopyBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe14d;</i>拷贝代码</button>
+      </div>
+    </div>
+  </div>
+  <!-- 模板配置弹窗 -->
+  <div id="pk-templateConfigModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>模板配置</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeTemplateConfigModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="display:flex;align-items:center;gap:8px;justify-content:flex-start;cursor:pointer;">
+            <input type="checkbox" id="pk-compactModeEnabled"
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--md-ink);">
+            <span>紧凑模式</span>
+          </label>
+          <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0 24px;">
+            启用后，<code>$pointInitList</code>、<code>$pointList</code>、<code>$recordInitList</code>、<code>$recordList</code>
+            生成的内容将剔除空格和换行</p>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-templateConfigCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-templateConfigSaveBtn">保存</button>
+      </div>
+    </div>
+  </div>
+  <!-- 编辑区域弹窗 -->
+  <div id="pk-editSelectionModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3 id="pk-editSelectionTitle">编辑区域</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeEditSelectionModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:8px;">区域坐标 (left, top, right, bottom)</label>
+          <input type="text" id="pk-editSelectionInput" class="matrix-edit-input" placeholder="例如: 100, 100, 200, 200">
+          <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0;">如果起点坐标大于终点坐标，将自动交换</p>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-editSelectionCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-editSelectionConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+  <!-- 编辑点色弹窗 -->
+  <div id="pk-editPointModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3 id="pk-editPointTitle">编辑点色</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeEditPointModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <div class="matrix-field">
+          <label style="margin-bottom:8px;">坐标 (x, y)</label>
+          <input type="text" id="pk-editPointInput" class="matrix-edit-input" placeholder="例如: 100, 100">
+        </div>
+        <div class="matrix-field" style="margin-top:12px;">
+          <label style="margin-bottom:8px;">颜色值 (可选)</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="text" id="pk-editPointColorInput" class="matrix-edit-input" placeholder="例如: FF0000 (留空则自动获取)" style="flex:1;">
+            <div id="pk-editPointColorPreview" style="width:40px;height:40px;border:1px solid var(--md-border);border-radius:6px;background:#888;flex-shrink:0;"></div>
+          </div>
+          <p style="font-size:11px;color:var(--md-muted);margin:6px 0 0;">支持 1-6 位十六进制。留空则从新坐标位置自动获取颜色</p>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-editPointCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-editPointConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+  <!-- 保存区域图像弹窗 -->
+  <!-- 粘贴确认弹窗 -->
+  <div id="pk-pasteConfirmModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:400px;">
+      <div class="matrix-code-modal-header">
+        <h3>替换当前图片</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closePasteConfirmModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body">
+        <p style="font-size:14px;color:var(--md-text);margin:0;">当前已打开一张图片，是否关闭并打开剪贴板中的新图片？</p>
+      </div>
+      <div class="matrix-code-modal-footer">
+        <button type="button" class="matrix-btn secondary" id="pk-pasteConfirmCancelBtn">取消</button>
+        <button type="button" class="matrix-btn" id="pk-pasteConfirmBtn">确定替换</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pk-saveRegionModal" class="matrix-code-modal" style="display:none;">
+    <div class="matrix-code-modal-content" style="max-width:550px;">
+      <div class="matrix-code-modal-header">
+        <h3>保存区域图像</h3>
+        <button type="button" class="matrix-code-modal-close" id="pk-closeSaveRegionModal">&times;</button>
+      </div>
+      <div class="matrix-code-modal-body" style="text-align:center;">
+        <div id="pk-saveRegionPreviewContainer"
+          style="margin-bottom:16px;padding:12px;background:#f8fcfe;border:1px solid var(--md-border);border-radius:8px;display:inline-block;">
+          <img id="pk-saveRegionPreviewImg" src="" alt="预览图像"
+            style="max-width:100%;max-height:200px;display:block;image-rendering:pixelated;" />
+        </div>
+        <div class="matrix-field">
+          <label>文件名称</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="pk-saveRegionFilename" placeholder="输入文件名" style="flex:1;" />
+            <span style="color:var(--md-muted);font-size:13px;">.png</span>
+          </div>
+        </div>
+        <div class="matrix-field" style="margin-top:12px;">
+          <label style="display:flex;align-items:center;justify-content:space-between;">
+            <span>代码模板</span>
+            <span style="font-size:11px;color:var(--md-muted);">(使用 $imgFileBaseName 作为文件名占位符)</span>
+          </label>
+          <textarea id="pk-saveRegionCodeTemplate" rows="2"
+            placeholder="例如: $imgFileBaseName = image.load_file(XXT_HOME_PATH..&quot;/res/$imgFileBaseName.png&quot;)"
+            style="font-family:var(--md-mono);font-size:12px;"></textarea>
+        </div>
+        <div class="matrix-field" style="margin-top:8px;">
+          <label>生成的代码</label>
+          <textarea id="pk-saveRegionGeneratedCode" rows="2" readonly
+            style="font-family:var(--md-mono);font-size:12px;background:#f0f6fa;"></textarea>
+        </div>
+      </div>
+      <div class="matrix-code-modal-footer" style="flex-wrap:wrap;gap:8px;">
+        <button type="button" class="matrix-btn secondary" id="pk-saveRegionCancelBtn">取消</button>
+        <button type="button" class="matrix-btn secondary" id="pk-saveRegionConfirmBtn"><i
+            class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe161;</i>保存</button>
+        <button type="button" class="matrix-btn" id="pk-saveRegionCopyAndSaveBtn"><i class="mdui-icon material-icons"
+            style="font-size:16px;vertical-align:middle;margin-right:4px;">&#xe14d;</i>拷贝代码并保存图像</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // 禁用系统默认右键菜单，只使用明确实现的右键功能
+    // 但对于文本框控件保留默认菜单
+    document.addEventListener('contextmenu', function(e) {
+      const target = e.target;
+      // 如果是文本输入控件，允许默认右键菜单
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+      e.preventDefault();
+    });
+  </script>
+</body>
+
+</html>

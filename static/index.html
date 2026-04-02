@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <meta http-equiv="X-UA-Compatible" content="edge" />
+    <meta
+      name="description"
+      content="IOSControl — Remote iOS Control Web IDE"
+    />
+    <title>IOSControl</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- ═══ Loading Overlay ═══ -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-logo">⚡</div>
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Connecting to daemon...</div>
+    </div>
+
+    <!-- ═══ Drawer Overlay ═══ -->
+    <div class="drawer-overlay" id="drawer-overlay"></div>
+
+    <!-- ═══ Left Drawer Navigation ═══ -->
+    <nav class="drawer" id="main-drawer">
+      <div class="drawer-header">
+        <div class="drawer-logo">⚡</div>
+        <div class="drawer-title">IOSControl</div>
+        <div class="drawer-subtitle" id="drawer-version">v0.5.0</div>
+      </div>
+      <div class="drawer-list">
+        <a class="drawer-item active" data-tab="screen">
+          <i class="material-icons">cast</i>
+          <span>Live Screen</span>
+        </a>
+        <a class="drawer-item" data-tab="script">
+          <i class="material-icons">code</i>
+          <span>Script Editor</span>
+        </a>
+        <a class="drawer-item" data-tab="log">
+          <i class="material-icons">receipt_long</i>
+          <span>Device Log</span>
+        </a>
+        <a class="drawer-item" data-tab="files">
+          <i class="material-icons">folder_open</i>
+          <span>Files</span>
+        </a>
+        <div class="drawer-divider"></div>
+        <a class="drawer-item" data-tab="settings">
+          <i class="material-icons">settings</i>
+          <span>Settings</span>
+        </a>
+        <a class="drawer-item" id="btn-shortcuts">
+          <i class="material-icons">keyboard</i>
+          <span>Shortcuts</span>
+        </a>
+        <div class="drawer-divider"></div>
+        <!-- Phase 9 Tools -->
+        <div style="padding:4px 16px 2px;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#555;font-weight:600">Tools</div>
+        <a class="drawer-item" href="/static/script_edit.html" target="_blank">
+          <i class="material-icons">edit_note</i>
+          <span>Script Editor</span>
+        </a>
+        <a class="drawer-item" href="/static/picker.html" target="_blank">
+          <i class="material-icons">colorize</i>
+          <span>Color Picker</span>
+        </a>
+        <a class="drawer-item" href="/static/matrix_dict.html" target="_blank">
+          <i class="material-icons">grid_on</i>
+          <span>Matrix Dict</span>
+        </a>
+        <a class="drawer-item" href="/static/applist.html" target="_blank">
+          <i class="material-icons">apps</i>
+          <span>App List</span>
+        </a>
+        <a class="drawer-item" href="/static/xxtouch_service.html" target="_blank">
+          <i class="material-icons">manage_accounts</i>
+          <span>Device Control</span>
+        </a>
+        <div class="drawer-divider"></div>
+        <a class="drawer-item" id="btn-kill-daemon">
+          <i class="material-icons" style="color: #ef5350"
+            >power_settings_new</i
+          >
+          <span style="color: #ef5350">Kill Daemon</span>
+        </a>
+      </div>
+      <div class="drawer-footer">
+        <div class="drawer-status" id="daemon-status">
+          <span class="status-dot"></span>
+          <span id="status-text">Connecting…</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ═══ Main Content ═══ -->
+    <div class="main-content">
+      <!-- Toolbar -->
+      <header class="toolbar" id="toolbar">
+        <button class="toolbar-btn" id="btn-menu" title="Menu">
+          <i class="material-icons">menu</i>
+        </button>
+        <span class="toolbar-title" id="toolbar-title">Live Screen</span>
+        <div class="toolbar-spacer"></div>
+
+        <!-- Screen tab toolbar actions -->
+        <div class="toolbar-actions" id="screen-actions">
+          <button
+            class="toolbar-btn"
+            id="btn-color-pick"
+            title="Color Picker (Hold Alt+Click)"
+          >
+            <i class="material-icons">colorize</i>
+          </button>
+          <div class="toolbar-sep"></div>
+          <button class="toolbar-btn" id="btn-rotate" title="Rotate">
+            <i class="material-icons">screen_rotation</i>
+          </button>
+          <button class="toolbar-btn" id="btn-refresh-screen" title="Refresh">
+            <i class="material-icons">refresh</i>
+          </button>
+          <button class="toolbar-btn" id="btn-home" title="Home Button">
+            <i class="material-icons">radio_button_unchecked</i>
+          </button>
+        </div>
+
+        <!-- Script tab toolbar actions -->
+        <div class="toolbar-actions hidden" id="script-actions">
+          <button class="toolbar-btn" id="btn-save" title="Save (Ctrl+S)">
+            <i class="material-icons">save</i>
+          </button>
+          <button class="toolbar-btn" id="btn-undo" title="Undo">
+            <i class="material-icons">undo</i>
+          </button>
+          <button class="toolbar-btn" id="btn-redo" title="Redo">
+            <i class="material-icons">redo</i>
+          </button>
+        </div>
+
+        <!-- Log tab toolbar actions -->
+        <div class="toolbar-actions hidden" id="log-actions">
+          <button class="toolbar-btn" id="btn-pause-log" title="Pause">
+            <i class="material-icons">pause</i>
+          </button>
+          <button class="toolbar-btn" id="btn-clear-log" title="Clear">
+            <i class="material-icons">delete_sweep</i>
+          </button>
+        </div>
+      </header>
+
+      <!-- ═══ Tab: Screen ═══ -->
+      <div class="tab-content active" id="tab-screen">
+        <div class="screen-container" id="screen-container">
+          <div class="screen-wrapper" id="screen-wrapper">
+            <canvas id="screen-canvas"></canvas>
+          </div>
+          <!-- Placeholder when disconnected -->
+          <div class="screen-placeholder" id="screen-placeholder">
+            <i class="material-icons">phonelink</i>
+            <p>Waiting for screen stream…</p>
+          </div>
+          <!-- Color picker tooltip -->
+          <div class="color-tooltip" id="color-tooltip">
+            <div class="color-swatch" id="color-swatch"></div>
+            <span id="color-value">#000000</span>
+          </div>
+          <!-- Bottom info bar -->
+          <div class="screen-bottom-bar">
+            <div class="screen-info-item">
+              <i class="material-icons">speed</i>
+              <span class="screen-fps" id="screen-fps">— fps</span>
+            </div>
+            <div class="screen-info-item">
+              <i class="material-icons">mouse</i>
+              <span class="screen-coords" id="screen-coords">—</span>
+            </div>
+            <div class="screen-info-item">
+              <span class="screen-resolution" id="screen-resolution">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: Script ═══ -->
+      <div class="tab-content" id="tab-script">
+        <div class="editor-container">
+          <div class="editor-toolbar">
+            <div class="editor-file-info">
+              <i class="material-icons">description</i>
+              <span class="editor-filename">untitled.lua</span>
+              <span class="editor-badge">Phase 5</span>
+            </div>
+            <div class="editor-actions">
+              <button
+                class="editor-btn"
+                id="btn-editor-run"
+                title="Run Script (Ctrl+Enter)"
+              >
+                <i class="material-icons" style="color: #4caf50">play_arrow</i>
+              </button>
+              <button
+                class="editor-btn"
+                id="btn-editor-stop"
+                title="Stop Script"
+              >
+                <i class="material-icons" style="color: #ef5350">stop</i>
+              </button>
+            </div>
+          </div>
+          <div class="editor-main">
+            <textarea
+              id="script-editor"
+              spellcheck="false"
+              placeholder="-- IOSControl Lua Script Editor (Phase 5)
+-- Ctrl+Enter to run, Stop to interrupt
+
+-- Available API:
+-- sys.log(msg)         -- log to daemon
+-- sys.msleep(ms)       -- sleep milliseconds
+-- touch.tap(x, y)      -- tap at coordinate
+-- touch.swipe(x1,y1,x2,y2,dur) -- swipe
+-- screen.get_color(x, y)  -- returns '#RRGGBB'
+-- screen.get_size()    -- returns width, height
+
+-- Example:
+for i = 1, 3 do
+  touch.tap(200, 400)
+  sys.msleep(500)
+  sys.log('tap ' .. i)
+end
+"
+            ></textarea>
+          </div>
+          <div class="editor-resize-handle" id="editor-resize-handle"></div>
+          <div class="editor-output">
+            <div class="editor-output-header">
+              <span>Output</span>
+            </div>
+            <textarea
+              id="script-output"
+              readonly
+              placeholder="Script output will appear here…"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: Log ═══ -->
+      <div class="tab-content" id="tab-log">
+        <div class="log-container">
+          <div class="log-toolbar">
+            <div class="log-status">
+              <span class="status-dot" id="log-status-dot"></span>
+              <span id="log-status-label">Connecting to log service…</span>
+            </div>
+            <div class="log-filter-group">
+              <button class="log-filter-btn active" data-filter="all">
+                All
+              </button>
+              <button class="log-filter-btn" data-filter="info">Info</button>
+              <button class="log-filter-btn" data-filter="warn">Warn</button>
+              <button class="log-filter-btn" data-filter="error">Error</button>
+            </div>
+          </div>
+          <textarea
+            id="log-textarea"
+            readonly
+            placeholder="Daemon logs will appear here…"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: Files ═══ -->
+      <div class="tab-content" id="tab-files">
+        <div class="placeholder-container">
+          <i class="material-icons placeholder-icon">folder_open</i>
+          <h2>File Manager</h2>
+          <p>
+            File browsing, upload, download, and script management will be
+            available in a future update.
+          </p>
+          <div class="placeholder-badge">
+            <i class="material-icons" style="font-size: 14px">schedule</i>
+            Coming Soon
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: Settings ═══ -->
+      <div class="tab-content" id="tab-settings">
+        <div class="settings-container">
+          <div class="settings-section-title">
+            <i class="material-icons">phone_iphone</i>
+            Device Information
+          </div>
+          <div class="settings-card" id="device-info-card">
+            <div class="settings-row">
+              <span class="settings-label">Daemon</span>
+              <span class="settings-value" id="info-daemon">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Version</span>
+              <span class="settings-value" id="info-version">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">PID</span>
+              <span class="settings-value" id="info-pid">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Screen</span>
+              <span class="settings-value" id="info-screen">—</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Sender ID</span>
+              <span class="settings-value" id="info-sender">—</span>
+            </div>
+          </div>
+
+          <div class="settings-section-title">
+            <i class="material-icons">photo_camera</i>
+            Screen Capture
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <span class="settings-label">JPEG Quality</span>
+              <div class="settings-control">
+                <input
+                  type="range"
+                  id="setting-quality"
+                  min="10"
+                  max="100"
+                  value="70"
+                  step="5"
+                />
+                <span id="quality-value">70%</span>
+              </div>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Refresh Interval</span>
+              <div class="settings-control">
+                <input
+                  type="range"
+                  id="setting-interval"
+                  min="50"
+                  max="1000"
+                  value="100"
+                  step="50"
+                />
+                <span id="interval-value">100ms</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section-title">
+            <i class="material-icons">touch_app</i>
+            Touch Control
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <span class="settings-label">Show Touch Indicator</span>
+              <div class="settings-control">
+                <input type="checkbox" id="setting-touch-indicator" checked />
+              </div>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Click = Tap Delay</span>
+              <div class="settings-control">
+                <input
+                  type="range"
+                  id="setting-tap-delay"
+                  min="0"
+                  max="500"
+                  value="0"
+                  step="50"
+                />
+                <span id="tap-delay-value">0ms</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section-title">
+            <i class="material-icons">info</i>
+            About
+          </div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <span class="settings-label">IOSControl Web IDE</span>
+              <span class="settings-value">v0.5.0</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Architecture</span>
+              <span class="settings-value">TrollStore Daemon</span>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">Port</span>
+              <span class="settings-value">46952</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ FAB Button ═══ -->
+    <button class="fab hidden" id="fab-run" title="Run Script">
+      <i class="material-icons">play_arrow</i>
+    </button>
+
+    <!-- ═══ Snackbar ═══ -->
+    <div class="snackbar" id="snackbar">
+      <i class="material-icons" id="snackbar-icon">info</i>
+      <span id="snackbar-text"></span>
+    </div>
+
+    <!-- ═══ Keyboard Shortcuts Modal ═══ -->
+    <div class="modal-overlay" id="shortcuts-modal">
+      <div class="modal-card">
+        <div class="modal-title">
+          <i class="material-icons">keyboard</i>
+          Keyboard Shortcuts
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Toggle Drawer</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>B</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Live Screen</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>1</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Script Editor</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>2</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Device Log</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>3</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Run Script</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>Enter</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Save Script</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd><kbd>S</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-label">Rotate Screen</span>
+          <div class="shortcut-keys"><kbd>R</kbd></div>
+        </div>
+        <button class="modal-close-btn" id="btn-close-shortcuts">Close</button>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

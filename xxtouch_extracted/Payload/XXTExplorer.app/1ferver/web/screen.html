@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,minimal-ui" />
+  <meta http-equiv="X-UA-Compatible" content="edge" />
+  <meta name="renderer" content="webkit" />
+  <title>XXTouch</title>
+  <link rel="apple-touch-icon" href="/xxtouch.png" />
+  <script type="text/javascript" src="js/jquery.min.js"></script>
+  <script type="text/javascript" src="mdui/js/mdui.min.js"></script>
+  <script type="text/javascript" src="js/base64.min.js"></script>
+  <script type="text/javascript" src="js/xxtouch_web.js"></script>
+  <script type="text/javascript">
+    // 确保在页面加载完成后运行(早于screen.js加载)
+    window.addEventListener('DOMContentLoaded', function () {
+      // 确保在页面完全加载后绑定事件处理函数
+      setTimeout(function () {
+        // 绑定剪贴板按钮点击事件
+        document.getElementById('open-clipboard-dialog').addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          handleClipboardClick();
+        }, true);
+
+        // 对对话框内所有事件进行特殊处理
+        document.getElementById('clipboard-dialog').addEventListener('click', function (e) {
+          // 不要阻止事件传播，只有当点击的不是按钮时才阻止
+          if (e.target.id !== 'send-to-clipboard' &&
+            e.target.id !== 'close-clipboard-dialog' &&
+            !e.target.closest('#send-to-clipboard') &&
+            !e.target.closest('#close-clipboard-dialog')) {
+            e.stopPropagation();
+          }
+        }, true);
+
+        // 绑定关闭按钮事件
+        document.getElementById('close-clipboard-dialog').addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          closeClipboardDialog();
+          return false;
+        }, true);
+
+        // 绑定发送按钮事件
+        document.getElementById('send-to-clipboard').addEventListener('click', function (e) {
+          e.stopPropagation();
+          e.preventDefault();
+          sendToClipboard();
+          return false;
+        }, true);
+
+        // 绑定对话框背景点击事件
+        document.getElementById('clipboard-overlay').addEventListener('click', function (e) {
+          if (e.target === this) {
+            e.stopPropagation();
+            e.preventDefault();
+            closeClipboardDialog();
+          }
+        }, true);
+
+        // 处理文本框键盘事件
+        document.getElementById('clipboard-text').addEventListener('keydown', function (e) {
+          e.stopPropagation();
+          return true;
+        }, true);
+      }, 500);
+    });
+
+    // 处理剪贴板按钮点击的函数
+    function handleClipboardClick() {
+      // 显示对话框和加载动画
+      document.getElementById('clipboard-overlay').style.display = 'block';
+      document.getElementById('clipboard-dialog').style.display = 'block';
+      document.getElementById('clipboard-loading').style.display = 'block';
+      document.getElementById('clipboard-text').value = ''; // 清空之前的内容
+
+      // 设置对话框状态为打开
+      window.clipboardDialogOpen = true;
+
+      // 对所有键盘事件实施特殊处理
+      activateSpecialEventHandling();
+
+      // 发送请求读取设备剪贴板
+      $.ajax({
+        url: '/api/pasteboard/read',
+        type: 'GET',
+        success: function (response, status, xhr) {
+          // 隐藏加载动画
+          document.getElementById('clipboard-loading').style.display = 'none';
+
+          // 检查Content-Type是否为文本类型
+          var contentType = xhr.getResponseHeader('Content-Type');
+
+          if (contentType && contentType.indexOf('text/') !== -1) {
+            // 是文本类型，显示在文本区域
+            document.getElementById('clipboard-text').value = response;
+            mdui.snackbar({
+              message: '已读取设备剪贴板文本',
+              position: 'bottom'
+            });
+          } else {
+            // 非文本类型
+            mdui.snackbar({
+              message: '设备剪贴板不包含文本内容',
+              position: 'bottom'
+            });
+          }
+        },
+        error: function (xhr, status, error) {
+          // 隐藏加载动画
+          document.getElementById('clipboard-loading').style.display = 'none';
+
+          mdui.snackbar({
+            message: '读取剪贴板失败: ' + error,
+            position: 'bottom'
+          });
+        }
+      });
+    }
+
+    // 关闭对话框函数
+    function closeClipboardDialog() {
+      document.getElementById('clipboard-overlay').style.display = 'none';
+      document.getElementById('clipboard-dialog').style.display = 'none';
+      document.getElementById('clipboard-loading').style.display = 'none';
+
+      // 设置对话框状态为关闭
+      window.clipboardDialogOpen = false;
+
+      // 恢复正常的事件处理
+      deactivateSpecialEventHandling();
+    }
+
+    // 发送到剪贴板函数
+    function sendToClipboard() {
+      var clipboardText = document.getElementById('clipboard-text').value;
+
+      if (clipboardText) {
+        $.ajax({
+          url: '/api/pasteboard/write',
+          type: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            "uti": "public.plain-text",
+            "data": clipboardText
+          }),
+          success: function (response) {
+            mdui.snackbar({
+              message: '文本已发送到设备剪贴板',
+              position: 'bottom'
+            });
+
+            closeClipboardDialog();
+          },
+          error: function (xhr, status, error) {
+            mdui.snackbar({
+              message: '发送失败: ' + error,
+              position: 'bottom'
+            });
+          }
+        });
+      } else {
+        mdui.snackbar({
+          message: '请先输入文本',
+          position: 'bottom'
+        });
+      }
+    }
+
+    // 特殊事件处理 - 对全局事件拦截器的临时覆盖
+    var originalKeyDownHandler = null;
+    var originalKeyUpHandler = null;
+
+    function activateSpecialEventHandling() {
+      // 保存原始的键盘事件处理函数
+      if (document.onkeydown) {
+        originalKeyDownHandler = document.onkeydown;
+        document.onkeydown = function (e) {
+          // 检查事件是否来自对话框内部
+          if (window.clipboardDialogOpen && e.target && (
+            e.target.id === 'clipboard-text' ||
+            e.target.closest('#clipboard-dialog'))) {
+            return true; // 允许默认行为
+          }
+          // 否则使用原始处理程序
+          return originalKeyDownHandler.call(this, e);
+        };
+      }
+
+      if (document.onkeyup) {
+        originalKeyUpHandler = document.onkeyup;
+        document.onkeyup = function (e) {
+          // 检查事件是否来自对话框内部
+          if (window.clipboardDialogOpen && e.target && (
+            e.target.id === 'clipboard-text' ||
+            e.target.closest('#clipboard-dialog'))) {
+            return true; // 允许默认行为
+          }
+          // 否则使用原始处理程序
+          return originalKeyUpHandler.call(this, e);
+        };
+      }
+    }
+
+    function deactivateSpecialEventHandling() {
+      // 恢复原始的键盘事件处理函数
+      if (originalKeyDownHandler) {
+        document.onkeydown = originalKeyDownHandler;
+        originalKeyDownHandler = null;
+      }
+
+      if (originalKeyUpHandler) {
+        document.onkeyup = originalKeyUpHandler;
+        originalKeyUpHandler = null;
+      }
+    }
+
+    // 添加全局点击处理，确保对话框内的按钮点击能被捕获
+    window.addEventListener('click', function (e) {
+      if (window.clipboardDialogOpen) {
+        // 检查点击的是否是我们的按钮
+        if (e.target.id === 'send-to-clipboard' || e.target.closest('#send-to-clipboard')) {
+          e.stopPropagation();
+          e.preventDefault();
+          sendToClipboard();
+          return false;
+        } else if (e.target.id === 'close-clipboard-dialog' || e.target.closest('#close-clipboard-dialog')) {
+          e.stopPropagation();
+          e.preventDefault();
+          closeClipboardDialog();
+          return false;
+        }
+      }
+    }, true);
+  </script>
+  <script type="text/javascript" src="screen.js"></script>
+  <link rel="stylesheet" href="mdui/css/mdui.min.css" />
+  <link rel="stylesheet" href="css/xxtouch_web.css" />
+  <link rel="icon" href="/xxtouch.png" type="image/png" />
+  <style>
+    #all_canvas {
+      top: 80px
+    }
+
+    body {
+      position: relative;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+      zoom: reset
+    }
+
+    /* 弹出式对话框样式 */
+    .clipboard-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10000;
+      background-color: white;
+      padding: 16px;
+      border-radius: 4px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      display: none;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .clipboard-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.4);
+      z-index: 9999;
+      display: none;
+    }
+
+    /* 确保对话框内的文本区域可编辑 */
+    .clipboard-dialog textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      user-select: text;
+    }
+
+    /* 加载中动画 */
+    .clipboard-loading {
+      display: none;
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .clipboard-loading .mdui-spinner {
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body class="mdui-drawer-body-left mdui-appbar-with-toolbar mdui-theme-primary-blue mdui-theme-accent-deep-orange">
+  <div class="mdui-drawer" id="main-drawer"></div>
+  <header class="mdui-appbar mdui-appbar-fixed">
+    <div class="mdui-toolbar mdui-xxtouch-color">
+      <span class="mdui-btn mdui-btn-icon mdui-ripple mdui-ripple-white" mdui-drawer="{target: '#main-drawer'}"><i
+          class="mdui-icon material-icons"></i></span>
+      <a href="./index.html" class="mdui-typo-headline mdui-hidden-xs">XXTouch</a>
+      <a href="" id="screen-title" class="mdui-typo-title">实时桌面</a>
+      <div class="mdui-toolbar-spacer"></div>
+
+      <!-- 添加剪贴板功能按钮 -->
+      <a href="javascript:;" id="open-clipboard-dialog" class="mdui-btn mdui-btn-icon mdui-ripple"
+        mdui-tooltip="{content: '剪贴板操作'}" onclick="return false;">
+        <i class="mdui-icon material-icons">content_paste</i>
+      </a>
+
+      <div href="javascript:;" id="rotate_turn_left" class="rotate mdui-btn mdui-btn-icon" data-rotation="0">
+        <i class="mdui-icon material-icons">screen_rotation</i>
+      </div>
+      <div href="javascript:;" id="home" class="home mdui-btn mdui-btn-icon">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+      <div href="javascript:;" id="power" class="power mdui-btn mdui-btn-icon">
+        <i class="mdui-icon material-icons"></i>
+      </div>
+    </div>
+  </header>
+  <div class="mdui-container-fluid" style="width:100%;text-align:center;margin:0 auto">
+    <canvas id="all_canvas"></canvas>
+  </div>
+
+  <!-- 剪贴板功能对话框 -->
+  <div class="clipboard-overlay" id="clipboard-overlay"></div>
+  <div class="clipboard-dialog" id="clipboard-dialog">
+    <h4 class="mdui-text-center">剪贴板操作</h4>
+
+    <!-- 加载动画 -->
+    <div class="clipboard-loading" id="clipboard-loading">
+      <div class="mdui-spinner mdui-spinner-colorful"></div>
+      <span>正在读取设备剪贴板...</span>
+    </div>
+
+    <div class="mdui-textfield">
+      <label class="mdui-textfield-label">剪贴板内容</label>
+      <textarea class="mdui-textfield-input" id="clipboard-text" rows="4" placeholder="输入要发送的文本或接收设备剪贴板内容"></textarea>
+    </div>
+    <div class="mdui-text-center" style="margin-top: 16px;">
+      <button class="mdui-btn mdui-btn-raised mdui-ripple mdui-color-theme-accent" id="send-to-clipboard">
+        发送到设备
+      </button>
+      <button class="mdui-btn mdui-btn-raised mdui-ripple" id="close-clipboard-dialog">
+        关闭
+      </button>
+    </div>
+  </div>
+</body>
+
+</html>

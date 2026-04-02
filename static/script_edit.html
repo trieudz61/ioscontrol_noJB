@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Script Editor — IOSControl</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/lua/lua.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css"
+    />
+    <style>
+      :root {
+        --bg: #0f0f1a;
+        --surface: #1a1a2e;
+        --surface2: #16213e;
+        --accent: #6c63ff;
+        --accent2: #a78bfa;
+        --green: #34d399;
+        --red: #f87171;
+        --yellow: #fbbf24;
+        --text: #e8e8f0;
+        --subtext: #888899;
+        --border: #2a2a3e;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ── Top Bar ── */
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .topbar h1 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--accent2);
+      }
+      .topbar .sep {
+        flex: 1;
+      }
+      .btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: opacity 0.15s;
+      }
+      .btn:active {
+        opacity: 0.7;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-secondary {
+        background: var(--surface2);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-danger {
+        background: #3d1a1a;
+        color: var(--red);
+        border: 1px solid #5a2020;
+      }
+      .btn-success {
+        background: #1a3d2e;
+        color: var(--green);
+        border: 1px solid #205a40;
+      }
+
+      /* ── File Bar ── */
+      .filebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+      .filebar select {
+        background: var(--border);
+        color: var(--text);
+        border: 1px solid #3a3a5e;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 13px;
+        flex: 1;
+      }
+      .file-status {
+        font-size: 11px;
+        color: var(--subtext);
+      }
+      .file-status.modified {
+        color: var(--yellow);
+      }
+
+      /* ── Editor ── */
+      .editor-wrap {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .CodeMirror {
+        height: 100% !important;
+        font-size: 13.5px;
+        line-height: 1.6;
+        font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+        background: #0d0d1a !important;
+      }
+      .CodeMirror-scroll {
+        overflow-y: auto !important;
+      }
+      .CodeMirror-gutters {
+        background: #0d0d1a !important;
+        border-right: 1px solid var(--border) !important;
+      }
+
+      /* ── Bottom: Output Panel ── */
+      .output-panel {
+        height: 140px;
+        background: #0a0a14;
+        border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .output-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 12px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+      .output-header span {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--subtext);
+        letter-spacing: 0.5px;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--subtext);
+      }
+      .status-dot.running {
+        background: var(--green);
+        animation: pulse 1s infinite;
+      }
+      .status-dot.error {
+        background: var(--red);
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      .output-text {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 12px;
+        font-family: "SF Mono", monospace;
+        font-size: 11.5px;
+        line-height: 1.6;
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+
+      /* ── Status bar ── */
+      .statusbar {
+        display: flex;
+        gap: 16px;
+        padding: 3px 12px;
+        background: var(--accent);
+        font-size: 11px;
+        color: #fff;
+        flex-shrink: 0;
+      }
+
+      /* ── Kbd shortcut hint ── */
+      kbd {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 1px 5px;
+        font-size: 10px;
+        color: var(--subtext);
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top Bar -->
+    <div class="topbar">
+      <h1>📝 Script Editor</h1>
+      <span style="font-size: 11px; color: var(--subtext)"
+        ><kbd>Ctrl+S</kbd> Save &nbsp; <kbd>F5</kbd> Run &nbsp;
+        <kbd>Ctrl+/</kbd> Comment</span
+      >
+      <div class="sep"></div>
+      <button class="btn btn-danger" id="btn-stop">⏹ Stop</button>
+      <button class="btn btn-primary" id="btn-run">▶ Run</button>
+    </div>
+
+    <!-- File Bar -->
+    <div class="filebar">
+      <select id="file-select">
+        <option value="">⬇ Load script…</option>
+      </select>
+      <button class="btn btn-secondary" id="btn-save">💾 Save</button>
+      <button class="btn btn-secondary" id="btn-new">＋ New</button>
+      <span class="file-status" id="file-status">unsaved</span>
+    </div>
+
+    <!-- Editor -->
+    <div class="editor-wrap">
+      <textarea id="editor">
+-- IOSControl Script Editor
+-- Lua 5.4 · XXTouch compatible API
+
+-- Example: tap center of screen
+local w, h = screen.get_size()
+touch.tap(w/2, h/2)
+sys.log("Tapped center: " .. w .. "x" .. h)
+</textarea
+      >
+    </div>
+
+    <!-- Output Panel -->
+    <div class="output-panel">
+      <div class="output-header">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Idle</span>
+        <div style="flex: 1"></div>
+        <button
+          class="btn btn-secondary"
+          style="padding: 2px 8px; font-size: 11px"
+          id="btn-clear-out"
+        >
+          Clear
+        </button>
+      </div>
+      <div class="output-text" id="output"></div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="statusbar">
+      <span id="sb-cursor">Ln 1, Col 1</span>
+      <span id="sb-lines">Lines: 9</span>
+      <span>Lua 5.4</span>
+      <span id="sb-file">untitled.lua</span>
+    </div>
+
+    <script>
+      const PORT = location.port || 46952;
+      const API = `http://${location.hostname}:${PORT}`;
+
+      // ── CodeMirror init ──────────────────────────────────────────────────────────
+      const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
+        mode: "lua",
+        theme: "dracula",
+        lineNumbers: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        tabSize: 2,
+        indentWithTabs: false,
+        electricChars: true,
+        extraKeys: {
+          "Ctrl-S": () => saveScript(),
+          F5: () => runScript(),
+          "Ctrl-Enter": () => runScript(),
+          "Ctrl-/": (cm) => cm.execCommand("toggleComment"),
+          "Ctrl-F": "find",
+          "Ctrl-H": "replace",
+        },
+      });
+
+      // Resize CM to fill editor-wrap
+      const editorWrap = document.querySelector(".editor-wrap");
+      const ro = new ResizeObserver(() =>
+        cm.setSize("100%", editorWrap.offsetHeight),
+      );
+      ro.observe(editorWrap);
+
+      // Cursor position
+      cm.on("cursorActivity", () => {
+        const c = cm.getCursor();
+        document.getElementById("sb-cursor").textContent =
+          `Ln ${c.line + 1}, Col ${c.ch + 1}`;
+        document.getElementById("sb-lines").textContent =
+          `Lines: ${cm.lineCount()}`;
+      });
+      cm.on("change", () => {
+        document.getElementById("file-status").textContent = "● modified";
+        document.getElementById("file-status").className =
+          "file-status modified";
+      });
+
+      // ── Lua API autocomplete hints ───────────────────────────────────────────────
+      const LUA_HINTS = [
+        "sys.log(",
+        "sys.toast(",
+        "sys.sleep(",
+        "sys.msleep(",
+        "touch.tap(",
+        "touch.swipe(",
+        "touch.long_press(",
+        "touch.down(",
+        "touch.move(",
+        "touch.up(",
+        "screen.get_size(",
+        "screen.get_color(",
+        "screen.capture(",
+        "screen.ocr(",
+        "screen.find_color(",
+        "screen.find_multi_color(",
+        "app.launch(",
+        "app.kill(",
+        "app.list(",
+        "app.frontmost(",
+        "app.is_running(",
+        "key.press(",
+        "key.input_text(",
+        "clipboard.read(",
+        "clipboard.write(",
+      ];
+      CodeMirror.registerHelper("hint", "lua", (cm) => {
+        const cur = cm.getCursor(),
+          line = cm.getLine(cur.line);
+        const start = cur.ch,
+          end = cur.ch;
+        const word = line.slice(0, start);
+        const list = LUA_HINTS.filter((h) =>
+          h.toLowerCase().startsWith(
+            word
+              .split(/[\s,()\[\]{}]+/)
+              .pop()
+              .toLowerCase(),
+          ),
+        );
+        return {
+          list,
+          from: CodeMirror.Pos(
+            cur.line,
+            start - word.split(/[\s,()\[\]{}]+/).pop().length,
+          ),
+          to: CodeMirror.Pos(cur.line, end),
+        };
+      });
+      cm.on("inputRead", (cm, change) => {
+        if (change.text[0] && /\w|\./.test(change.text[0])) {
+          cm.showHint({ hint: CodeMirror.hint.lua, completeSingle: false });
+        }
+      });
+
+      // ── File management ──────────────────────────────────────────────────────────
+      let currentFile = "";
+
+      async function loadFileList() {
+        try {
+          const r = await fetch(`${API}/api/script/list`);
+          const j = await r.json();
+          const sel = document.getElementById("file-select");
+          sel.innerHTML = '<option value="">⬇ Load script…</option>';
+          (j.scripts || []).forEach((name) => {
+            const o = document.createElement("option");
+            o.value = o.textContent = name;
+            sel.appendChild(o);
+          });
+        } catch (e) {
+          console.error("loadFileList", e);
+        }
+      }
+
+      document
+        .getElementById("file-select")
+        .addEventListener("change", async (e) => {
+          const name = e.target.value;
+          if (!name) return;
+          try {
+            const r = await fetch(
+              `${API}/api/script/file?name=${encodeURIComponent(name)}`,
+            );
+            const text = await r.text();
+            cm.setValue(text);
+            cm.clearHistory();
+            currentFile = name;
+            window.location.hash = encodeURIComponent(name);
+            document.getElementById("sb-file").textContent = name;
+            document.getElementById("file-status").textContent = "saved";
+            document.getElementById("file-status").className = "file-status";
+          } catch (e) {
+            appendOutput("❌ Load failed: " + e.message);
+          }
+        });
+
+      async function saveScript() {
+        if (!currentFile) {
+          const name = prompt("Save as (without .lua):");
+          if (!name) return;
+          currentFile = name.endsWith(".lua") ? name : name + ".lua";
+          document.getElementById("sb-file").textContent = currentFile;
+        }
+        try {
+          await fetch(
+            `${API}/api/script/file?name=${encodeURIComponent(currentFile)}`,
+            {
+              method: "PUT",
+              body: cm.getValue(),
+              headers: { "Content-Type": "text/plain" },
+            },
+          );
+          document.getElementById("file-status").textContent = "✓ saved";
+          document.getElementById("file-status").className = "file-status";
+          await loadFileList();
+        } catch (e) {
+          appendOutput("❌ Save failed: " + e.message);
+        }
+      }
+
+      document.getElementById("btn-save").addEventListener("click", saveScript);
+      document.getElementById("btn-new").addEventListener("click", () => {
+        currentFile = "";
+        cm.setValue("-- New Script\n\n");
+        document.getElementById("sb-file").textContent = "untitled.lua";
+        document.getElementById("file-status").textContent = "unsaved";
+        cm.focus();
+      });
+
+      // ── Script execution ─────────────────────────────────────────────────────────
+      let statusPoll;
+
+      async function runScript() {
+        const code = cm.getValue();
+        setStatus("running");
+        appendOutput("▶ Running...\n");
+        try {
+          await fetch(`${API}/api/script/run`, {
+            method: "POST",
+            body: code,
+            headers: { "Content-Type": "text/plain" },
+          });
+          statusPoll = setInterval(pollStatus, 500);
+        } catch (e) {
+          appendOutput("❌ " + e.message);
+          setStatus("idle");
+        }
+      }
+
+      async function pollStatus() {
+        try {
+          const r = await fetch(`${API}/api/script/status`);
+          const j = await r.json();
+          if (j.status !== "running") {
+            clearInterval(statusPoll);
+            setStatus(j.status === "error" ? "error" : "idle");
+            if (j.error) appendOutput("❌ Error: " + j.error);
+            else if (j.status === "idle") appendOutput("✅ Completed\n");
+          }
+          // Fetch log delta
+          const lr = await fetch(`${API}/api/system/log`);
+          const lt = await lr.text();
+          const luaLines = lt
+            .split("\n")
+            .filter((l) => l.includes("[Lua]"))
+            .slice(-5);
+          if (luaLines.length) {
+            const out = document.getElementById("output");
+            const last = out.dataset.lastLog || "";
+            const newLines = luaLines.filter((l) => !last.includes(l));
+            if (newLines.length) {
+              appendOutput(newLines.join("\n") + "\n");
+              out.dataset.lastLog = luaLines.join("\n");
+            }
+          }
+        } catch (e) {
+          clearInterval(statusPoll);
+          setStatus("idle");
+        }
+      }
+
+      document.getElementById("btn-run").addEventListener("click", runScript);
+      document
+        .getElementById("btn-stop")
+        .addEventListener("click", async () => {
+          await fetch(`${API}/api/script/stop`, { method: "POST" });
+          clearInterval(statusPoll);
+          setStatus("idle");
+          appendOutput("⏹ Stopped\n");
+        });
+      document.getElementById("btn-clear-out").addEventListener("click", () => {
+        document.getElementById("output").textContent = "";
+        document.getElementById("output").dataset.lastLog = "";
+      });
+
+      function setStatus(s) {
+        const dot = document.getElementById("status-dot");
+        const txt = document.getElementById("status-text");
+        dot.className =
+          "status-dot" +
+          (s === "running" ? " running" : s === "error" ? " error" : "");
+        txt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+      }
+      function appendOutput(text) {
+        const el = document.getElementById("output");
+        el.textContent += text;
+        el.scrollTop = el.scrollHeight;
+      }
+
+      // ── Init ──────────────────────────────────────────────────────────────────────
+      loadFileList();
+
+      // Auto-load script from URL hash (e.g. script_edit.html#myscript.lua)
+      if (window.location.hash) {
+        const hashName = decodeURIComponent(window.location.hash.slice(1));
+        if (hashName) {
+          setTimeout(async () => {
+            try {
+              const r = await fetch(
+                `${API}/api/script/file?name=${encodeURIComponent(hashName)}`,
+              );
+              if (r.ok) {
+                const text = await r.text();
+                cm.setValue(text);
+                cm.clearHistory();
+                currentFile = hashName;
+                document.getElementById("sb-file").textContent = hashName;
+                document.getElementById("file-status").textContent = "saved";
+                document.getElementById("file-status").className =
+                  "file-status";
+              }
+            } catch (e) {
+              console.error("Auto-load from hash failed:", e);
+            }
+          }, 500);
+        }
+      }
+    </script>
+  </body>
+</html>

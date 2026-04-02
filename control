@@ -1,0 +1,9 @@
+Package: com.trieu.ioscontrol
+Name: IOSControl
+Depends: mobilesubstrate
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: iOS automation tweak — touch injection, screen capture, scripting
+Maintainer: Trieu
+Author: Trieu
+Section: Tweaks

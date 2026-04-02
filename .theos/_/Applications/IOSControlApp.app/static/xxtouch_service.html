@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Device Control — IOSControl</title>
+<style>
+  :root { --bg:#0f0f1a; --surface:#1a1a2e; --surface2:#16213e; --accent:#6c63ff; --text:#e8e8f0; --subtext:#888899; --border:#2a2a3e; --green:#34d399; --red:#f87171; --yellow:#fbbf24; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,sans-serif; min-height:100dvh; }
+  .topbar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  .topbar h1 { font-size:15px; font-weight:600; color:#a78bfa; }
+
+  .content { padding:16px; max-width:480px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+
+  /* Status card */
+  .status-card { background:var(--surface); border-radius:14px; padding:16px; border:1px solid var(--border); }
+  .status-card h2 { font-size:13px; color:var(--subtext); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+  .status-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); }
+  .status-row:last-child { border:none; }
+  .status-label { font-size:13px; color:var(--subtext); }
+  .status-value { font-size:13px; font-weight:500; font-family:monospace; }
+
+  /* Action cards */
+  .action-card { background:var(--surface); border-radius:14px; padding:16px; border:1px solid var(--border); }
+  .action-card h2 { font-size:13px; color:var(--subtext); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+  .action-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .action-btn {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:16px 12px; border-radius:12px; border:1px solid var(--border);
+    background:var(--surface2); cursor:pointer; transition:transform 0.1s, opacity 0.1s;
+    text-decoration:none; color:var(--text);
+  }
+  .action-btn:active { transform:scale(0.96); opacity:0.8; }
+  .action-btn .icon { font-size:28px; }
+  .action-btn .label { font-size:12px; font-weight:500; }
+  .action-btn .desc { font-size:10px; color:var(--subtext); text-align:center; }
+  .action-btn.danger { border-color:#5a2020; background:#1a0808; }
+  .action-btn.warn { border-color:#5a4010; background:#1a1205; }
+  .action-btn.success { border-color:#205a40; background:#081a12; }
+  .action-btn.info { border-color:#1a205a; background:#08100a; }
+
+  /* Clipboard section */
+  .clip-out { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px; color:var(--text); font-size:13px; resize:vertical; min-height:60px; font-family:inherit; }
+  .btn-row { display:flex; gap:8px; margin-top:8px; }
+  .btn { padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:500; flex:1; }
+  .btn:active { opacity:0.7; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-sec { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
+
+  /* Log tail */
+  .log-tail { background:#0a0a14; border-radius:8px; padding:10px; font-family:monospace; font-size:11px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-all; max-height:150px; overflow-y:auto; border:1px solid var(--border); }
+
+  /* Toast */
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(108,99,255,0.95); color:#fff; padding:10px 20px; border-radius:10px; font-size:13px; pointer-events:none; opacity:0; transition:opacity 0.3s; z-index:999; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚙️ Device & Service Control</h1>
+</div>
+
+<div class="content">
+
+  <!-- Daemon Status -->
+  <div class="status-card">
+    <h2>Daemon Status</h2>
+    <div class="status-row"><span class="status-label">Status</span><span class="status-value" id="s-status" style="color:var(--subtext)">Checking…</span></div>
+    <div class="status-row"><span class="status-label">Version</span><span class="status-value" id="s-ver">—</span></div>
+    <div class="status-row"><span class="status-label">Model</span><span class="status-value" id="s-model">—</span></div>
+    <div class="status-row"><span class="status-label">iOS</span><span class="status-value" id="s-ios">—</span></div>
+    <div class="status-row"><span class="status-label">Screen</span><span class="status-value" id="s-screen">—</span></div>
+    <div class="status-row"><span class="status-label">Memory</span><span class="status-value" id="s-mem">—</span></div>
+    <div class="status-row"><span class="status-label">PID</span><span class="status-value" id="s-pid">—</span></div>
+  </div>
+
+  <!-- Script Control -->
+  <div class="action-card">
+    <h2>Script Control</h2>
+    <div class="action-grid">
+      <div class="action-btn success" id="act-run-last">
+        <span class="icon">▶️</span>
+        <span class="label">Resume Script</span>
+        <span class="desc">Run last script code</span>
+      </div>
+      <div class="action-btn danger" id="act-stop">
+        <span class="icon">⏹️</span>
+        <span class="label">Stop Script</span>
+        <span class="desc">Kill running script</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daemon Control -->
+  <div class="action-card">
+    <h2>Daemon Control</h2>
+    <div class="action-grid">
+      <div class="action-btn info" id="act-restart">
+        <span class="icon">🔄</span>
+        <span class="label">Restart Daemon</span>
+        <span class="desc">Kill & respawn</span>
+      </div>
+      <div class="action-btn danger" id="act-kill-daemon">
+        <span class="icon">💀</span>
+        <span class="label">Kill Daemon</span>
+        <span class="desc">Graceful shutdown</span>
+      </div>
+      <a class="action-btn" href="/" target="_self">
+        <span class="icon">🌐</span>
+        <span class="label">Open Web IDE</span>
+        <span class="desc">Main control panel</span>
+      </a>
+      <a class="action-btn" href="/static/script_edit.html">
+        <span class="icon">📝</span>
+        <span class="label">Script Editor</span>
+        <span class="desc">CodeMirror editor</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Clipboard Manager -->
+  <div class="action-card">
+    <h2>Clipboard</h2>
+    <textarea class="clip-out" id="clip-text" placeholder="Device clipboard content…"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-sec" id="btn-clip-read">📥 Read</button>
+      <button class="btn btn-primary" id="btn-clip-write">📤 Write</button>
+    </div>
+  </div>
+
+  <!-- System Log Tail -->
+  <div class="action-card">
+    <h2>Log (last 20 lines)</h2>
+    <div class="log-tail" id="log-tail">Loading…</div>
+    <div class="btn-row">
+      <button class="btn btn-sec" id="btn-clr-log">🗑 Clear Log</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PORT = location.port || 46952;
+const API = `http://${location.hostname}:${PORT}`;
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+async function loadStatus() {
+  try {
+    const [s, d] = await Promise.all([
+      fetch(`${API}/api/status`).then(r=>r.json()),
+      fetch(`${API}/api/device/info`).then(r=>r.json())
+    ]);
+    document.getElementById('s-status').textContent = s.ok ? '🟢 Online' : '🔴 Offline';
+    document.getElementById('s-status').style.color = s.ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('s-ver').textContent = s.version || '—';
+    if (d.ok) {
+      document.getElementById('s-model').textContent = d.model || '—';
+      document.getElementById('s-ios').textContent = `${d.systemName} ${d.systemVersion}`;
+      document.getElementById('s-screen').textContent = `${d.screenWidth}×${d.screenHeight}`;
+      document.getElementById('s-mem').textContent = `${d.usedMemoryMB}MB / ${d.totalMemoryMB}MB`;
+      document.getElementById('s-pid').textContent = d.pid || '—';
+    }
+  } catch(e) {
+    document.getElementById('s-status').textContent = '🔴 Offline';
+    document.getElementById('s-status').style.color = 'var(--red)';
+  }
+}
+
+async function loadLog() {
+  try {
+    const r = await fetch(`${API}/api/system/log`);
+    const text = await r.text();
+    const lines = text.trim().split('\n').slice(-20).join('\n');
+    const el = document.getElementById('log-tail');
+    el.textContent = lines || '(empty)';
+    el.scrollTop = el.scrollHeight;
+  } catch(e) {}
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+document.getElementById('act-stop').addEventListener('click', async () => {
+  await fetch(`${API}/api/script/stop`, {method:'POST'}).catch(()=>{});
+  showToast('⏹ Script stopped');
+});
+
+document.getElementById('act-restart').addEventListener('click', async () => {
+  if (!confirm('Restart daemon?')) return;
+  await fetch(`${API}/api/kill`).catch(()=>{});
+  showToast('🔄 Daemon restarting…');
+  setTimeout(loadStatus, 1500);
+});
+
+document.getElementById('act-kill-daemon').addEventListener('click', async () => {
+  if (!confirm('Kill daemon? It will restart on next app open.')) return;
+  await fetch(`${API}/api/kill`).catch(()=>{});
+  showToast('💀 Daemon killed');
+});
+
+document.getElementById('btn-clip-read').addEventListener('click', async () => {
+  try {
+    const r = await fetch(`${API}/api/clipboard`);
+    const j = await r.json();
+    document.getElementById('clip-text').value = j.text || '';
+    showToast('📥 Clipboard read');
+  } catch(e) { showToast('❌ Error: ' + e.message); }
+});
+
+document.getElementById('btn-clip-write').addEventListener('click', async () => {
+  const text = document.getElementById('clip-text').value;
+  try {
+    await fetch(`${API}/api/clipboard`, { method:'POST', body:JSON.stringify({text}), headers:{'Content-Type':'application/json'} });
+    showToast('📤 Written to clipboard');
+  } catch(e) { showToast('❌ ' + e.message); }
+});
+
+document.getElementById('btn-clr-log').addEventListener('click', async () => {
+  await fetch(`${API}/api/system/log`, {method:'DELETE'}).catch(()=>{});
+  document.getElementById('log-tail').textContent = '(cleared)';
+  showToast('🗑 Log cleared');
+});
+
+// Links for script controls that need actual code — open editor
+document.getElementById('act-run-last').addEventListener('click', () => {
+  window.location.href = '/static/script_edit.html';
+});
+
+// ── Init + polling ────────────────────────────────────────────────────────────
+loadStatus();
+loadLog();
+setInterval(loadLog, 3000);
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
