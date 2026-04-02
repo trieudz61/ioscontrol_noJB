@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- ═══ Identity (REQUIRED for UIApplicationMain → BackBoard) ═══ -->
+    <key>application-identifier</key>
+    <string>com.trieu.ictoastservice</string>
+    <key>com.apple.developer.team-identifier</key>
+    <string>XXXXXXXXXX</string>
+
     <!-- ═══ Core: BackBoard/FrontBoard Display Access ═══ -->
     <!-- These are the critical entitlements that let a posix_spawn'd process
          create UIWindows visible on top of other apps.
