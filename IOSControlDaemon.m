@@ -841,36 +841,6 @@ int main(int argc, char *argv[]) {
     // ── Init Lua Scripting Engine (Phase 5) ──
     ic_luaInit();
 
-    // ── Launch ICToastService (hidden UIApp for global toast overlay) ──
-    // Mirrors XXTouch's XXTUIService pattern: a hidden UIApp that can show
-    // UIWindow overlays on any screen (even over other apps).
-    {
-      static char toastSvcPath[1024];
-      uint32_t pathSize = sizeof(toastSvcPath);
-      if (_NSGetExecutablePath(toastSvcPath, &pathSize) == 0) {
-        // Replace "IOSControlDaemon" with "ICToastService" in the path
-        NSString *execPath = [NSString stringWithUTF8String:toastSvcPath];
-        NSString *dir = [execPath stringByDeletingLastPathComponent];
-        NSString *svcPath =
-            [dir stringByAppendingPathComponent:@"ICToastService"];
-        if ([[NSFileManager defaultManager] fileExistsAtPath:svcPath]) {
-          const char *argv_toast[] = {svcPath.UTF8String, NULL};
-          pid_t toastPid = 0;
-          int spawnRet = posix_spawn(&toastPid, svcPath.UTF8String, NULL, NULL,
-                                     (char **)argv_toast, NULL);
-          if (spawnRet == 0) {
-            logMsg("🍞 ICToastService launched (PID=%d)", toastPid);
-          } else {
-            logMsg("⚠️ ICToastService spawn failed: %d (%s)", spawnRet,
-                   strerror(spawnRet));
-          }
-        } else {
-          logMsg("⚠️ ICToastService binary not found at: %s",
-                 svcPath.UTF8String);
-        }
-      }
-    }
-
     logMsg("═══════════════════════════════════════");
     logMsg(
         "🎮 Daemon ready! HTTP on :46952, Screen Capture active, Lua ready.");

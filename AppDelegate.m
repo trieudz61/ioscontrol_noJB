@@ -133,8 +133,9 @@
 
 // ═══════════════════════════════════════════
 // IPC — daemon → main app
-// Toast handled by ICToastService (hidden UIApp)
 // ═══════════════════════════════════════════
+
+static UIWindow *gToastWindow = nil;
 
 static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
                                   CFNotificationName n, const void *obj,
@@ -155,13 +156,96 @@ static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
   });
 }
 
+static void ic_toastCallback(CFNotificationCenterRef c, void *o,
+                             CFNotificationName n, const void *obj,
+                             CFDictionaryRef info) {
+  NSString *path = @"/tmp/ioscontrol_toast_text.txt";
+  NSError *err;
+  NSString *text = [NSString stringWithContentsOfFile:path
+                                             encoding:NSUTF8StringEncoding
+                                                error:&err];
+  if (!text || err)
+    return;
+  NSString *toastText = [text copy];
+  [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    // Dismiss previous toast
+    if (gToastWindow) {
+      gToastWindow.hidden = YES;
+      gToastWindow = nil;
+    }
+
+    CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
+    CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
+
+    UIWindow *w = [[UIWindow alloc] init];
+    w.windowLevel = 20000099.9;
+    w.backgroundColor = [UIColor clearColor];
+    w.userInteractionEnabled = NO;
+    w.hidden = NO;
+    gToastWindow = w;
+
+    CGFloat maxW = screenW - 60;
+    UILabel *label = [[UILabel alloc] init];
+    label.text = toastText;
+    label.textColor = [UIColor whiteColor];
+    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
+    label.numberOfLines = 3;
+    label.textAlignment = NSTextAlignmentCenter;
+    label.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.92];
+    label.layer.cornerRadius = 14;
+    label.layer.masksToBounds = YES;
+
+    CGSize sz = [label sizeThatFits:CGSizeMake(maxW - 32, 200)];
+    sz.width = MIN(sz.width + 40, maxW);
+    sz.height = MAX(sz.height + 20, 40);
+
+    w.frame = CGRectMake((screenW - sz.width) / 2.0, screenH - sz.height - 120,
+                         sz.width, sz.height);
+    label.frame = CGRectMake(0, 0, sz.width, sz.height);
+    [w addSubview:label];
+
+    w.alpha = 0;
+    w.transform = CGAffineTransformMakeScale(0.85, 0.85);
+    [UIView animateWithDuration:0.2
+        delay:0
+        usingSpringWithDamping:0.7
+        initialSpringVelocity:0.5
+        options:0
+        animations:^{
+          w.alpha = 1;
+          w.transform = CGAffineTransformIdentity;
+        }
+        completion:^(BOOL _) {
+          dispatch_after(
+              dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+              dispatch_get_main_queue(), ^{
+                [UIView animateWithDuration:0.25
+                    animations:^{
+                      w.alpha = 0;
+                    }
+                    completion:^(BOOL __) {
+                      w.hidden = YES;
+                      if (gToastWindow == w)
+                        gToastWindow = nil;
+                    }];
+              });
+        }];
+  });
+}
+
 - (void)registerIPCListeners {
-  // Pasteboard only — toast is now handled by ICToastService
+  CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
   CFNotificationCenterAddObserver(
-      CFNotificationCenterGetDarwinNotifyCenter(), (__bridge void *)self,
-      ic_pasteboardCallback, CFSTR("com.ioscontrol.setPasteboard"), NULL,
+      darwin, (__bridge void *)self, ic_pasteboardCallback,
+      CFSTR("com.ioscontrol.setPasteboard"), NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
-  NSLog(@"📡 IPC: Pasteboard listener registered");
+  CFNotificationCenterAddObserver(
+      darwin, (__bridge void *)self, ic_toastCallback,
+      CFSTR("com.ioscontrol.showToast"), NULL,
+      CFNotificationSuspensionBehaviorDeliverImmediately);
+  NSLog(@"📡 IPC: Pasteboard + Toast listeners registered");
 }
 
 // ═══════════════════════════════════════════
