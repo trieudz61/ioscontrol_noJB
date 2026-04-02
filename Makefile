@@ -62,8 +62,8 @@ after-stage::
 		-Wno-deprecated-declarations \
 		ICToastService.m \
 		-o $(TOAST_APP)/ICToastService
-	@echo "🔏 Signing ICToastService..."
-	ldid -SEntitlements.plist $(TOAST_APP)/ICToastService
+	@echo "🔏 Signing ICToastService with display entitlements..."
+	ldid -SICToastService-Entitlements.plist $(TOAST_APP)/ICToastService
 	@cp ICToastService-Info.plist $(TOAST_APP)/Info.plist
 
 	@echo "📁 Copying static web files..."
