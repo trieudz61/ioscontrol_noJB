@@ -509,7 +509,8 @@ static int lua_sys_alert(lua_State *L) {
 }
 
 // sys.toast(msg) — daemon writes IPC file + posts Darwin notification
-// The main UIApp receives it and posts the real UNUserNotification
+// ICToastService (hidden UIApp with display entitlements) shows UIWindow
+// overlay
 static int lua_sys_toast(lua_State *L) {
   const char *msg = luaL_checkstring(L, 1);
   NSString *msgStr = [NSString stringWithUTF8String:msg];
@@ -522,12 +523,21 @@ static int lua_sys_toast(lua_State *L) {
              encoding:NSUTF8StringEncoding
                 error:nil];
 
-  // Signal the main UIApp — it will post UNUserNotification from its process
-  // (daemon cannot post notifications: "Notifications are not allowed for this
-  // application")
+  // Signal ICToastService + main app
   CFNotificationCenterPostNotification(
       CFNotificationCenterGetDarwinNotifyCenter(),
       CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
+
+  // Debug: dump ICToastService log (visible in Web IDE console)
+  NSString *svcLog = [NSString stringWithContentsOfFile:@"/tmp/ictoast_log.txt"
+                                               encoding:NSUTF8StringEncoding
+                                                  error:nil];
+  if (svcLog.length > 0) {
+    logMsg("🔍 [ICToastService log] %s", svcLog.UTF8String);
+  } else {
+    logMsg("⚠️ [ICToastService] no log at /tmp/ictoast_log.txt — service may "
+           "not have started");
+  }
 
   return 0;
 }
