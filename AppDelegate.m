@@ -125,6 +125,14 @@
     });
   }];
 
+  // ── Spawn ICToastService from UIApp context (inherits display server) ──
+  // Must be called from UIApp (not daemon) — same as XXTouch
+  // watchdog→XXTUIService
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
+                 ^{
+                   [[ICDaemonLauncher shared] spawnToastService];
+                 });
+
   // ── IPC Listeners ──
   [self registerIPCListeners];
 

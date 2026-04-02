@@ -62,8 +62,6 @@ after-stage::
 		-o $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService
 	@echo "🔏 Signing ICToastService..."
 	ldid -SEntitlements.plist $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService
-	@echo "📄 Copying ICToastService Info.plist..."
-	cp ICToastService-Info.plist $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/ICToastService-Info.plist
 	@echo "📁 Copying static web files..."
 	cp -r static/ $(THEOS_STAGING_DIR)/Applications/IOSControlApp.app/static/
 	@echo "📦 Building TrollStore .tipa..."

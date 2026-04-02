@@ -91,4 +91,43 @@ static const int kDaemonPort = 46952;
         }] resume];
 }
 
+- (void)spawnToastService {
+  // Kill any existing ICToastService instance
+  pid_t killPid;
+  const char *killArgv[] = {"/usr/bin/killall", "-9", "ICToastService", NULL};
+  posix_spawn(&killPid, "/usr/bin/killall", NULL, NULL, (char **)killArgv,
+              environ);
+  waitpid(killPid, NULL, 0);
+  usleep(100000); // 100ms gap
+
+  NSString *appPath = [[NSBundle mainBundle] bundlePath];
+  NSString *svcPath =
+      [appPath stringByAppendingPathComponent:@"ICToastService"];
+
+  if (![[NSFileManager defaultManager] fileExistsAtPath:svcPath]) {
+    NSLog(@"⚠️ ICToastService binary not found at: %@", svcPath);
+    return;
+  }
+
+  // Spawn from UIApp context (NOT from daemon) — this inherits the
+  // display server (backboardd) Mach port, allowing UIWindow creation.
+  // Same pattern as XXTouch watchdog spawning XXTUIService.
+  posix_spawnattr_t attr;
+  posix_spawnattr_init(&attr);
+  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
+  posix_spawnattr_setpgroup(&attr, 0);
+
+  const char *argv[] = {[svcPath UTF8String], NULL};
+  pid_t pid = 0;
+  int result = posix_spawn(&pid, [svcPath UTF8String], NULL, &attr,
+                           (char **)argv, environ);
+  posix_spawnattr_destroy(&attr);
+
+  if (result == 0) {
+    NSLog(@"🍞 ICToastService launched from UIApp context (PID=%d)", pid);
+  } else {
+    NSLog(@"❌ ICToastService spawn failed: %d (%s)", result, strerror(result));
+  }
+}
+
 @end
