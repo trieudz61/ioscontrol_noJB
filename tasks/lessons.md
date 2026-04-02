@@ -62,26 +62,3 @@
 - Rule: IOHIDEvent dispatch must be called from same run loop thread as client
 
 ### Pattern: senderID requires 1 physical touch after daemon restart
-
-## 2026-04-02 — IDE Refactoring & Bug Fix Session
-
-| #  | Lesson | Context |
-|----|--------|---------|
-| 25 | `respondsToSelector:` returns YES cho selectors không tồn tại trên dynamic ObjC classes | `LSApplicationWorkspace terminateApplicationWithBundleID:` — selector check passed nhưng call did nothing. Don't trust `respondsToSelector:` as proof a method works. |
-| 26 | `performSelector:` trả `id` nhưng cast sang `int`/`BOOL` gây crash | `applicationProcessIdentifierForBundleID:` crash daemon. Dùng `NSInvocation` hoặc tránh `performSelector` cho non-object return types. |
-| 27 | Hardcoded values trong polling loops phá hỏng settings UI | `setTimeout(150)` và `quality=40` hardcoded trong `screenPollNext()` — settings sliders có thay đổi `config` nhưng polling loop không đọc config. Luôn dùng config variable. |
-| 28 | Brute-force template matching quá chậm trên mobile | SAD scan ~900K positions × 2500 pixels = hàng tỷ comparisons. Fix: 2-phase pyramid — coarse stride=4 + refine ±8px. ~10-30x faster. |
-| 29 | `system()` unavailable trên iOS SDK | Compiler error: `'system' is unavailable: not available on iOS`. Dùng `posix_spawn()` + `waitpid()` thay thế. |
-| 30 | `dlopen()` hoạt động cho private frameworks trên TrollStore | `SpringBoardServices.framework` → `SBSCopyFrontmostApplicationDisplayIdentifier()` via `dlopen` + `dlsym`. An toàn hơn `performSelector`. |
-| 31 | Iframe lazy-load pattern: `data-src` → `src` on first tab click | Tránh load 5 iframes cùng lúc khi IDE start. Chỉ set `iframe.src = iframe.getAttribute('data-src')` khi user click tab lần đầu. |
-| 32 | Convenience wrappers (tap_image, tap_text) nên ở cùng module với action | `touch.tap_image` = `screen.find_image` + `touch.tap`. Đặt trong touch lib vì action chính là tap, user nghĩ theo hành động không phải theo source. |
-
-### Architecture Decisions (Phase 12)
-
-| Decision | Rationale |
-|----------|-----------|
-| SIGTERM→SIGKILL cascade (300ms gap) | Graceful shutdown trước, force kill nếu vẫn sống. Tốt hơn SIGKILL ngay vì app có thể save state. |
-| PID-based `is_running` thay vì LSProxy | `findPidForBundleID` + `kill(pid,0)` ổn định 100%, không phụ thuộc private API availability. |
-| `dlopen` SBS thay vì `performSelector` cho frontmost | C function pointer (dlsym) an toàn hơn ObjC dynamic dispatch. Không crash nếu symbol missing — chỉ return NULL. |
-| Iframe inline thay vì `target="_blank"` | Single-page experience. User không mất context khi chuyển tool. Lazy-load giữ startup nhanh. |
-

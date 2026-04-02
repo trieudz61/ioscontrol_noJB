@@ -1532,6 +1532,69 @@ static void handleTemplateDelete(int clientFd, const char *query) {
   }
 }
 
+// ── Toast route: POST /api/toast body: {"text":"Hello","duration":2.0} ──
+// Forward to ICToastService via CFSocket IPC (same as lua_sys_toast)
+static int gToastSocket = -1;
+
+static void toastSocketSendHTTP(const char *jsonBytes) {
+    if (gToastSocket >= 0) {
+        // Already connected, reuse
+    } else {
+        gToastSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (gToastSocket < 0) return;
+
+        struct sockaddr_in addr;
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(46953);
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+        struct timeval timeout;
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+        setsockopt(gToastSocket, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+        if (connect(gToastSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+            close(gToastSocket);
+            gToastSocket = -1;
+            return;
+        }
+    }
+
+    uint32_t len = (uint32_t)strlen(jsonBytes);
+    uint32_t netLen = htonl(len);
+    send(gToastSocket, &netLen, sizeof(netLen), 0);
+    send(gToastSocket, jsonBytes, len, 0);
+    logMsg("🍞 [HTTP toast] sent to ICToastService");
+}
+
+static void handleToast(int clientFd, const char *body) {
+    if (!body || strlen(body) == 0) {
+        sendError(clientFd, 400, "missing body");
+        return;
+    }
+
+    // Forward to ICToastService via CFSocket
+    toastSocketSendHTTP(body);
+
+    // Also write to file + Darwin notification as backup
+    // Try to parse text for the file fallback
+    char textBuf[2048];
+    jsonString(body, "text", textBuf, sizeof(textBuf));
+    if (textBuf[0]) {
+        NSString *msgStr = [NSString stringWithUTF8String:textBuf];
+        [msgStr writeToFile:@"/tmp/ioscontrol_toast_text.txt"
+                  atomically:YES
+                    encoding:NSUTF8StringEncoding
+                       error:nil];
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
+    }
+
+    sendOK(clientFd, "toast sent");
+}
+
 static void handleClient(int clientFd) {
   // ── Phase 1: read initial chunk (headers + possibly partial body) ──
   char buf[4096];
@@ -1726,6 +1789,10 @@ static void handleClient(int clientFd) {
   } else if (strcmp(path, "/api/system/log") == 0 &&
              (strcmp(method, "GET") == 0 || strcmp(method, "DELETE") == 0)) {
     handleSystemLog(clientFd, method);
+    // ── Toast (Phase 11) ──
+  } else if (strcmp(path, "/api/toast") == 0 &&
+             strcmp(method, "POST") == 0) {
+    handleToast(clientFd, body);
     // ── Template Management ──
   } else if (strcmp(path, "/api/screen/crop") == 0 &&
              strcmp(method, "POST") == 0) {

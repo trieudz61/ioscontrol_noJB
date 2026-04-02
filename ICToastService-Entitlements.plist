@@ -3,10 +3,13 @@
 <plist version="1.0">
 <dict>
     <!-- ═══ Identity (REQUIRED for UIApplicationMain → BackBoard) ═══ -->
+    <!-- Phải cùng team-identifier với main app để chia sẻ entitlements -->
     <key>application-identifier</key>
-    <string>com.trieu.ictoastservice</string>
+    <string>$(AppIdentifierPrefix)com.trieu.ioscontrol</string>
     <key>com.apple.developer.team-identifier</key>
-    <string>XXXXXXXXXX</string>
+    <string>$(TeamIdentifierPrefix)</string>
+    <key>com.apple.security.application-identifier</key>
+    <string>$(AppIdentifierPrefix)com.trieu.ioscontrol</string>
 
     <!-- ═══ Core: BackBoard/FrontBoard Display Access ═══ -->
     <!-- These are the critical entitlements that let a posix_spawn'd process

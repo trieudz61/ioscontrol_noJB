@@ -2,100 +2,90 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
     <meta http-equiv="X-UA-Compatible" content="edge" />
-    <meta
-      name="description"
-      content="IOSControl — Remote iOS Control Web IDE"
-    />
+    <meta name="description" content="IOSControl — Remote iOS Control Web IDE" />
     <title>IOSControl</title>
     <link rel="stylesheet" href="/static/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/icon?family=Material+Icons"
-    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
-    <!-- ═══ Loading Overlay ═══ -->
+    <!-- Loading Overlay -->
     <div class="loading-overlay" id="loading-overlay">
-      <div class="loading-logo">⚡</div>
+      <svg class="loading-logo" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
       <div class="loading-spinner"></div>
       <div class="loading-text">Connecting to daemon...</div>
     </div>
 
-    <!-- ═══ Drawer Overlay ═══ -->
+    <!-- Drawer Overlay -->
     <div class="drawer-overlay" id="drawer-overlay"></div>
 
-    <!-- ═══ Left Drawer Navigation ═══ -->
+    <!-- Left Drawer Navigation -->
     <nav class="drawer" id="main-drawer">
       <div class="drawer-header">
-        <div class="drawer-logo">⚡</div>
+        <svg class="drawer-logo" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
         <div class="drawer-title">IOSControl</div>
         <div class="drawer-subtitle" id="drawer-version">v0.5.0</div>
       </div>
+
       <div class="drawer-list">
         <a class="drawer-item" data-tab="script">
-          <i class="material-icons">edit_note</i>
+          <i data-lucide="code-2" class="nav-icon"></i>
           <span>Script Editor</span>
         </a>
         <a class="drawer-item active" data-tab="screen">
-          <i class="material-icons">cast</i>
+          <i data-lucide="smartphone" class="nav-icon"></i>
           <span>Live Screen</span>
         </a>
-
         <a class="drawer-item" data-tab="log">
-          <i class="material-icons">receipt_long</i>
+          <i data-lucide="terminal" class="nav-icon"></i>
           <span>Device Log</span>
         </a>
         <div class="drawer-divider"></div>
         <a class="drawer-item" data-tab="settings">
-          <i class="material-icons">settings</i>
+          <i data-lucide="settings" class="nav-icon"></i>
           <span>Settings</span>
         </a>
         <a class="drawer-item" id="btn-shortcuts">
-          <i class="material-icons">keyboard</i>
+          <i data-lucide="keyboard" class="nav-icon"></i>
           <span>Shortcuts</span>
         </a>
         <div class="drawer-divider"></div>
-        <!-- Phase 9 Tools -->
-        <div style="padding:4px 16px 2px;font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#555;font-weight:600">Tools</div>
-
+        <div class="drawer-section-label">Tools</div>
         <a class="drawer-item" data-tab="picker">
-          <i class="material-icons">colorize</i>
+          <i data-lucide="pipette" class="nav-icon"></i>
           <span>Color Picker</span>
         </a>
         <a class="drawer-item" data-tab="applist">
-          <i class="material-icons">apps</i>
+          <i data-lucide="layout-grid" class="nav-icon"></i>
           <span>App List</span>
         </a>
         <a class="drawer-item" data-tab="devcontrol">
-          <i class="material-icons">manage_accounts</i>
+          <i data-lucide="hand-metal" class="nav-icon"></i>
           <span>Device Control</span>
         </a>
         <a class="drawer-item" data-tab="apidocs">
-          <i class="material-icons">menu_book</i>
+          <i data-lucide="book-open" class="nav-icon"></i>
           <span>API Docs</span>
         </a>
         <a class="drawer-item" data-tab="tplmaker">
-          <i class="material-icons">crop</i>
+          <i data-lucide="crop" class="nav-icon"></i>
           <span>Template Maker</span>
         </a>
         <div class="drawer-divider"></div>
         <a class="drawer-item" id="btn-kill-daemon">
-          <i class="material-icons" style="color: #ef5350"
-            >power_settings_new</i
-          >
-          <span style="color: #ef5350">Kill Daemon</span>
+          <i data-lucide="power" class="nav-icon" style="color:#f87171"></i>
+          <span style="color:#f87171">Kill Daemon</span>
         </a>
       </div>
+
       <div class="drawer-footer">
         <div class="drawer-status" id="daemon-status">
           <span class="status-dot"></span>
@@ -104,72 +94,75 @@
       </div>
     </nav>
 
-    <!-- ═══ Main Content ═══ -->
+    <!-- Main Content -->
     <div class="main-content">
       <!-- Toolbar -->
       <header class="toolbar" id="toolbar">
         <button class="toolbar-btn" id="btn-menu" title="Menu">
-          <i class="material-icons">menu</i>
+          <i data-lucide="panel-left" class="toolbar-icon"></i>
         </button>
         <span class="toolbar-title" id="toolbar-title">Live Screen</span>
         <div class="toolbar-spacer"></div>
 
         <!-- Screen tab toolbar actions -->
         <div class="toolbar-actions" id="screen-actions">
-          <button
-            class="toolbar-btn"
-            id="btn-color-pick"
-            title="Color Picker (Hold Alt+Click)"
-          >
-            <i class="material-icons">colorize</i>
+          <button class="toolbar-btn" id="btn-color-pick" title="Color Picker (Hold Alt+Click)">
+            <i data-lucide="pipette" class="toolbar-icon"></i>
           </button>
           <div class="toolbar-sep"></div>
           <button class="toolbar-btn" id="btn-rotate" title="Rotate">
-            <i class="material-icons">screen_rotation</i>
+            <i data-lucide="rotate-cw" class="toolbar-icon"></i>
           </button>
           <button class="toolbar-btn" id="btn-refresh-screen" title="Refresh">
-            <i class="material-icons">refresh</i>
+            <i data-lucide="refresh-cw" class="toolbar-icon"></i>
           </button>
           <button class="toolbar-btn" id="btn-home" title="Home Button">
-            <i class="material-icons">radio_button_unchecked</i>
+            <i data-lucide="home" class="toolbar-icon"></i>
           </button>
         </div>
 
         <!-- Log tab toolbar actions -->
         <div class="toolbar-actions hidden" id="log-actions">
           <button class="toolbar-btn" id="btn-pause-log" title="Pause">
-            <i class="material-icons">pause</i>
+            <i data-lucide="pause" class="toolbar-icon" id="pause-icon"></i>
           </button>
           <button class="toolbar-btn" id="btn-clear-log" title="Clear">
-            <i class="material-icons">delete_sweep</i>
+            <i data-lucide="trash-2" class="toolbar-icon"></i>
           </button>
         </div>
       </header>
 
-      <!-- ═══ Tab: Screen ═══ -->
+      <!-- Tab: Screen -->
       <div class="tab-content active" id="tab-screen">
         <div class="screen-container" id="screen-container">
           <div class="screen-wrapper" id="screen-wrapper">
             <canvas id="screen-canvas"></canvas>
           </div>
-          <!-- Placeholder when disconnected -->
           <div class="screen-placeholder" id="screen-placeholder">
-            <i class="material-icons">phonelink</i>
+            <svg class="ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
             <p>Waiting for screen stream…</p>
           </div>
-          <!-- Color picker tooltip -->
           <div class="color-tooltip" id="color-tooltip">
             <div class="color-swatch" id="color-swatch"></div>
             <span id="color-value">#000000</span>
           </div>
-          <!-- Bottom info bar -->
           <div class="screen-bottom-bar">
             <div class="screen-info-item">
-              <i class="material-icons">speed</i>
+              <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/>
+                <path d="M13.45 11.55 15.5 9.5"/>
+                <path d="M6.3 20a9 9 0 1 1 11.4 0"/>
+              </svg>
               <span class="screen-fps" id="screen-fps">— fps</span>
             </div>
             <div class="screen-info-item">
-              <i class="material-icons">mouse</i>
+              <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+                <path d="M13 13l6 6"/>
+              </svg>
               <span class="screen-coords" id="screen-coords">—</span>
             </div>
             <div class="screen-info-item">
@@ -179,12 +172,12 @@
         </div>
       </div>
 
-      <!-- ═══ Tab: Script (iframe) ═══ -->
+      <!-- Tab: Script (iframe) -->
       <div class="tab-content" id="tab-script">
-        <iframe id="script-iframe" src="/static/script_edit.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe id="script-iframe" src="/static/script_edit.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: Log ═══ -->
+      <!-- Tab: Log -->
       <div class="tab-content" id="tab-log">
         <div class="log-container">
           <div class="log-toolbar">
@@ -193,52 +186,46 @@
               <span id="log-status-label">Connecting to log service…</span>
             </div>
             <div class="log-filter-group">
-              <button class="log-filter-btn active" data-filter="all">
-                All
-              </button>
+              <button class="log-filter-btn active" data-filter="all">All</button>
               <button class="log-filter-btn" data-filter="info">Info</button>
               <button class="log-filter-btn" data-filter="warn">Warn</button>
               <button class="log-filter-btn" data-filter="error">Error</button>
             </div>
           </div>
-          <textarea
-            id="log-textarea"
-            readonly
-            placeholder="Daemon logs will appear here…"
-          ></textarea>
+          <textarea id="log-textarea" readonly placeholder="Daemon logs will appear here…"></textarea>
         </div>
       </div>
 
-      <!-- ═══ Tab: Color Picker ═══ -->
+      <!-- Tab: Color Picker -->
       <div class="tab-content" id="tab-picker">
-        <iframe data-src="/static/picker.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe data-src="/static/picker.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: App List ═══ -->
+      <!-- Tab: App List -->
       <div class="tab-content" id="tab-applist">
-        <iframe data-src="/static/applist.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe data-src="/static/applist.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: Device Control ═══ -->
+      <!-- Tab: Device Control -->
       <div class="tab-content" id="tab-devcontrol">
-        <iframe data-src="/static/xxtouch_service.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe data-src="/static/xxtouch_service.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: API Docs ═══ -->
+      <!-- Tab: API Docs -->
       <div class="tab-content" id="tab-apidocs">
-        <iframe data-src="/static/api_docs.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe data-src="/static/api_docs.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: Template Maker ═══ -->
+      <!-- Tab: Template Maker -->
       <div class="tab-content" id="tab-tplmaker">
-        <iframe data-src="/static/template_maker.html" style="width:100%;height:100%;border:none;background:#0c0c14;"></iframe>
+        <iframe data-src="/static/template_maker.html" style="width:100%;height:100%;border:none;background:#060a12;"></iframe>
       </div>
 
-      <!-- ═══ Tab: Settings ═══ -->
+      <!-- Tab: Settings -->
       <div class="tab-content" id="tab-settings">
         <div class="settings-container">
           <div class="settings-section-title">
-            <i class="material-icons">phone_iphone</i>
+            <i data-lucide="smartphone" class="sst-icon"></i>
             Device Information
           </div>
           <div class="settings-card" id="device-info-card">
@@ -265,42 +252,28 @@
           </div>
 
           <div class="settings-section-title">
-            <i class="material-icons">photo_camera</i>
+            <i data-lucide="camera" class="sst-icon"></i>
             Screen Capture
           </div>
           <div class="settings-card">
             <div class="settings-row">
               <span class="settings-label">JPEG Quality</span>
               <div class="settings-control">
-                <input
-                  type="range"
-                  id="setting-quality"
-                  min="10"
-                  max="100"
-                  value="70"
-                  step="5"
-                />
+                <input type="range" id="setting-quality" min="10" max="100" value="70" step="5" />
                 <span id="quality-value">70%</span>
               </div>
             </div>
             <div class="settings-row">
               <span class="settings-label">Refresh Interval</span>
               <div class="settings-control">
-                <input
-                  type="range"
-                  id="setting-interval"
-                  min="50"
-                  max="1000"
-                  value="100"
-                  step="50"
-                />
+                <input type="range" id="setting-interval" min="50" max="1000" value="100" step="50" />
                 <span id="interval-value">100ms</span>
               </div>
             </div>
           </div>
 
           <div class="settings-section-title">
-            <i class="material-icons">touch_app</i>
+            <i data-lucide="hand" class="sst-icon"></i>
             Touch Control
           </div>
           <div class="settings-card">
@@ -313,21 +286,14 @@
             <div class="settings-row">
               <span class="settings-label">Click = Tap Delay</span>
               <div class="settings-control">
-                <input
-                  type="range"
-                  id="setting-tap-delay"
-                  min="0"
-                  max="500"
-                  value="0"
-                  step="50"
-                />
+                <input type="range" id="setting-tap-delay" min="0" max="500" value="0" step="50" />
                 <span id="tap-delay-value">0ms</span>
               </div>
             </div>
           </div>
 
           <div class="settings-section-title">
-            <i class="material-icons">info</i>
+            <i data-lucide="info" class="sst-icon"></i>
             About
           </div>
           <div class="settings-card">
@@ -348,22 +314,24 @@
       </div>
     </div>
 
-    <!-- ═══ FAB Button ═══ -->
+    <!-- FAB Button -->
     <button class="fab hidden" id="fab-run" title="Run Script">
-      <i class="material-icons">play_arrow</i>
+      <svg class="fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
     </button>
 
-    <!-- ═══ Snackbar ═══ -->
+    <!-- Snackbar -->
     <div class="snackbar" id="snackbar">
-      <i class="material-icons" id="snackbar-icon">info</i>
+      <i data-lucide="info" class="snack-icon" id="snackbar-icon"></i>
       <span id="snackbar-text"></span>
     </div>
 
-    <!-- ═══ Keyboard Shortcuts Modal ═══ -->
+    <!-- Keyboard Shortcuts Modal -->
     <div class="modal-overlay" id="shortcuts-modal">
       <div class="modal-card">
         <div class="modal-title">
-          <i class="material-icons">keyboard</i>
+          <i data-lucide="keyboard" class="mt-icon"></i>
           Keyboard Shortcuts
         </div>
         <div class="shortcut-row">
@@ -399,5 +367,12 @@
     </div>
 
     <script src="/static/app.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      });
+    </script>
   </body>
 </html>

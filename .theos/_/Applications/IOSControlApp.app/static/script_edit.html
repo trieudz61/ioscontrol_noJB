@@ -4,14 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Script Editor — IOSControl</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/lua/lua.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.js"></script>
@@ -21,41 +19,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css"
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css" />
     <style>
       :root {
-        --bg: #0f0f1a;
-        --surface: #1a1a2e;
-        --surface2: #16213e;
+        --bg: #060a12;
+        --surface: #0d1220;
+        --surface2: #111828;
+        --primary: #00d4ff;
+        --primary-glow: rgba(0, 212, 255, 0.2);
+        --secondary: #a855f7;
         --accent: #6c63ff;
         --accent2: #a78bfa;
         --green: #34d399;
         --red: #f87171;
         --yellow: #fbbf24;
         --text: #e8e8f0;
-        --subtext: #888899;
-        --border: #2a2a3e;
+        --subtext: rgba(255,255,255,0.5);
+        --border: rgba(255,255,255,0.07);
+        --border-glass: rgba(255,255,255,0.12);
+        --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
+        --font-ui: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
       }
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { height: 100%; overflow: hidden; }
+
       body {
         background: var(--bg);
         color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
-        height: 100dvh;
+        font-family: var(--font-ui);
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        -webkit-font-smoothing: antialiased;
       }
 
       /* ── Top Bar ── */
@@ -63,19 +59,38 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 12px;
+        padding: 8px 14px;
         background: var(--surface);
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid rgba(0, 212, 255, 0.08);
         flex-shrink: 0;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      .topbar-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .topbar-brand svg {
+        width: 20px;
+        height: 20px;
+        color: var(--primary);
+        filter: drop-shadow(0 0 6px var(--primary-glow));
       }
       .topbar h1 {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 600;
-        color: var(--accent2);
+        color: var(--primary);
+        letter-spacing: -0.3px;
       }
-      .topbar .sep {
-        flex: 1;
+      .topbar .shortcut-hint {
+        font-size: 11px;
+        color: var(--subtext);
+        display: flex;
+        align-items: center;
+        gap: 4px;
       }
+      .topbar .sep { flex: 1; }
       .btn {
         display: flex;
         align-items: center;
@@ -84,79 +99,93 @@
         border-radius: 8px;
         border: none;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
-        transition: opacity 0.15s;
+        font-family: var(--font-ui);
+        transition: all 0.15s;
       }
-      .btn:active {
-        opacity: 0.7;
-      }
+      .btn:active { opacity: 0.75; transform: scale(0.97); }
+      .btn svg { width: 14px; height: 14px; }
       .btn-primary {
-        background: var(--accent);
+        background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
         color: #fff;
+        box-shadow: 0 4px 14px rgba(108, 99, 255, 0.3);
       }
+      .btn-primary:hover { box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4); }
       .btn-secondary {
         background: var(--surface2);
         color: var(--text);
-        border: 1px solid var(--border);
+        border: 1px solid var(--border-glass);
+      }
+      .btn-secondary:hover {
+        background: rgba(0, 212, 255, 0.06);
+        border-color: rgba(0, 212, 255, 0.2);
+        color: var(--primary);
       }
       .btn-danger {
-        background: #3d1a1a;
+        background: rgba(248, 113, 113, 0.1);
         color: var(--red);
-        border: 1px solid #5a2020;
+        border: 1px solid rgba(248, 113, 113, 0.2);
       }
+      .btn-danger:hover { background: rgba(248, 113, 113, 0.15); }
       .btn-success {
-        background: #1a3d2e;
+        background: rgba(52, 211, 153, 0.1);
         color: var(--green);
-        border: 1px solid #205a40;
+        border: 1px solid rgba(52, 211, 153, 0.2);
       }
+      .btn-success:hover { background: rgba(52, 211, 153, 0.15); }
 
       /* ── File Bar ── */
       .filebar {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 12px;
+        padding: 6px 14px;
         background: var(--surface2);
         border-bottom: 1px solid var(--border);
         flex-shrink: 0;
       }
       .filebar select {
-        background: var(--border);
+        background: var(--bg);
         color: var(--text);
-        border: 1px solid #3a3a5e;
+        border: 1px solid var(--border-glass);
         border-radius: 6px;
-        padding: 4px 8px;
-        font-size: 13px;
+        padding: 5px 10px;
+        font-size: 12px;
+        font-family: var(--font-ui);
         flex: 1;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .filebar select:focus {
+        border-color: rgba(0, 212, 255, 0.3);
+        box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.08);
       }
       .file-status {
         font-size: 11px;
         color: var(--subtext);
+        white-space: nowrap;
       }
-      .file-status.modified {
-        color: var(--yellow);
-      }
+      .file-status.modified { color: var(--yellow); }
+      .file-status.saved { color: var(--green); }
+
+      /* ── Main Row ── */
+      .main-row { display: flex; flex: 1; overflow: hidden; }
 
       /* ── Editor ── */
-      .editor-wrap {
-        flex: 1;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-      }
+      .editor-col { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+      .editor-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
       .CodeMirror {
         height: 100% !important;
         font-size: 13.5px;
         line-height: 1.6;
-        font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
-        background: #0d0d1a !important;
+        font-family: var(--font-mono);
+        background: #050810 !important;
       }
-      .CodeMirror-scroll {
-        overflow-y: auto !important;
-      }
+      .CodeMirror-scroll { overflow-y: auto !important; }
       .CodeMirror-gutters {
-        background: #0d0d1a !important;
+        background: #050810 !important;
         border-right: 1px solid var(--border) !important;
         width: 48px !important;
         min-width: 48px !important;
@@ -165,19 +194,22 @@
         padding: 0 8px 0 4px !important;
         min-width: 36px !important;
         text-align: right;
+        color: rgba(255,255,255,0.2) !important;
       }
-      .CodeMirror-sizer {
-        margin-left: 48px !important;
-      }
+      .CodeMirror-sizer { margin-left: 48px !important; }
       .CodeMirror pre.CodeMirror-line,
-      .CodeMirror pre.CodeMirror-line-like {
-        padding-left: 8px !important;
+      .CodeMirror pre.CodeMirror-line-like { padding-left: 8px !important; }
+      .CodeMirror-cursor { border-left-color: var(--primary) !important; }
+      .CodeMirror-selectedtext { background: rgba(0, 212, 255, 0.12) !important; }
+      .cm-s-dracula .CodeMirror-selected { background: rgba(0, 212, 255, 0.15) !important; }
+      .CodeMirror-activeline-background {
+        background: rgba(0, 212, 255, 0.04) !important;
       }
 
-      /* ── Bottom: Output Panel ── */
+      /* ── Output Panel ── */
       .output-panel {
         height: 140px;
-        background: #0a0a14;
+        background: #050810;
         border-top: 1px solid var(--border);
         display: flex;
         flex-direction: column;
@@ -187,7 +219,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 4px 12px;
+        padding: 5px 14px;
         background: var(--surface2);
         border-bottom: 1px solid var(--border);
       }
@@ -203,72 +235,60 @@
         height: 8px;
         border-radius: 50%;
         background: var(--subtext);
+        flex-shrink: 0;
+        transition: background 0.2s;
       }
       .status-dot.running {
         background: var(--green);
-        animation: pulse 1s infinite;
+        box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+        animation: pulse-green 1s infinite;
       }
-      .status-dot.error {
-        background: var(--red);
-      }
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.4;
-        }
+      .status-dot.error { background: var(--red); box-shadow: 0 0 8px rgba(248, 113, 113, 0.5); }
+      @keyframes pulse-green {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
       }
       .output-text {
         flex: 1;
         overflow-y: auto;
-        padding: 8px 12px;
-        font-family: "SF Mono", monospace;
+        padding: 8px 14px;
+        font-family: var(--font-mono);
         font-size: 11.5px;
         line-height: 1.6;
-        color: var(--text);
+        color: #8bc34a;
         white-space: pre-wrap;
         word-break: break-all;
+        -webkit-user-select: text;
+        user-select: text;
       }
+      .output-text .err { color: var(--red); }
+      .output-text .ok { color: var(--green); }
 
-      /* ── Status bar ── */
+      /* ── Status Bar ── */
       .statusbar {
         display: flex;
         gap: 16px;
-        padding: 3px 12px;
-        background: var(--accent);
+        padding: 4px 14px;
+        background: linear-gradient(90deg, var(--accent) 0%, var(--secondary) 100%);
         font-size: 11px;
-        color: #fff;
+        color: rgba(255,255,255,0.8);
         flex-shrink: 0;
+        font-family: var(--font-mono);
       }
+      .statusbar span { display: flex; align-items: center; gap: 4px; }
 
       /* ── Kbd shortcut hint ── */
       kbd {
-        background: var(--surface2);
-        border: 1px solid var(--border);
+        background: rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.15);
         border-radius: 3px;
         padding: 1px 5px;
         font-size: 10px;
-        color: var(--subtext);
-      }
-
-      /* Scrollbar */
-      ::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: var(--border);
-        border-radius: 2px;
+        color: rgba(255,255,255,0.6);
+        font-family: var(--font-mono);
       }
 
       /* ── File Panel (right sidebar) ── */
-      .main-row { display:flex; flex:1; overflow:hidden; }
-      .editor-col { display:flex; flex-direction:column; flex:1; overflow:hidden; }
       .file-panel {
         width: 220px;
         background: var(--surface);
@@ -278,55 +298,127 @@
         flex-shrink: 0;
         overflow: hidden;
       }
-      .file-panel.hidden { display:none; }
+      .file-panel.hidden { display: none; }
       .file-panel-header {
-        display:flex; align-items:center; gap:6px;
-        padding:8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
         background: var(--surface2);
-        border-bottom:1px solid var(--border);
-        font-size:11px; font-weight:600; text-transform:uppercase;
-        color: var(--subtext); letter-spacing:0.5px;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--primary);
+        letter-spacing: 0.5px;
       }
-      .file-panel-header .sep { flex:1; }
-      .file-panel-list {
-        flex:1; overflow-y:auto; padding:4px;
-      }
+      .file-panel-header .sep { flex: 1; }
+      .file-panel-header svg { width: 13px; height: 13px; }
+      .file-panel-list { flex: 1; overflow-y: auto; padding: 4px; }
       .fp-item {
-        display:flex; align-items:center; gap:6px;
-        padding:6px 8px; border-radius:6px; cursor:pointer;
-        font-size:12px; transition:background 0.1s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: background 0.1s;
         color: var(--text);
       }
-      .fp-item:hover { background:rgba(108,99,255,0.1); }
-      .fp-item.active { background:rgba(108,99,255,0.2); color:#a78bfa; }
-      .fp-item .material-icons { font-size:16px; color:var(--subtext); }
-      .fp-item .fp-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-      .fp-item .fp-del { opacity:0; font-size:14px; color:var(--red); cursor:pointer; transition:opacity 0.1s; }
-      .fp-item:hover .fp-del { opacity:1; }
-      .fp-empty { text-align:center; padding:20px; color:var(--subtext); font-size:11px; }
+      .fp-item:hover { background: rgba(0, 212, 255, 0.06); }
+      .fp-item.active {
+        background: rgba(0, 212, 255, 0.1);
+        color: var(--primary);
+      }
+      .fp-item svg { width: 14px; height: 14px; color: var(--subtext); flex-shrink: 0; }
+      .fp-item.active svg { color: var(--primary); }
+      .fp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .fp-del {
+        opacity: 0;
+        font-size: 13px;
+        color: var(--red);
+        cursor: pointer;
+        transition: opacity 0.1s;
+        width: 14px;
+        height: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .fp-item:hover .fp-del { opacity: 1; }
+      .fp-empty {
+        text-align: center;
+        padding: 24px 12px;
+        color: var(--subtext);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0, 212, 255, 0.15);
+        border-radius: 2px;
+      }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(0, 212, 255, 0.3); }
+      ::selection { background: rgba(0, 212, 255, 0.2); }
     </style>
   </head>
   <body>
     <!-- Top Bar -->
     <div class="topbar">
-      <h1>📝 Script Editor</h1>
-      <span style="font-size: 11px; color: var(--subtext)"
-        ><kbd>Ctrl+S</kbd> Save &nbsp; <kbd>F5</kbd> Run &nbsp;
-        <kbd>Ctrl+/</kbd> Comment</span
-      >
+      <div class="topbar-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+        </svg>
+        <h1>Script Editor</h1>
+      </div>
+      <div class="shortcut-hint">
+        <kbd>Ctrl+S</kbd> Save &nbsp; <kbd>F5</kbd> Run &nbsp; <kbd>Ctrl+/</kbd> Comment
+      </div>
       <div class="sep"></div>
-      <button class="btn btn-secondary" id="btn-toggle-files" title="Toggle Files">📁</button>
-      <button class="btn btn-danger" id="btn-stop">⏹ Stop</button>
-      <button class="btn btn-primary" id="btn-run">▶ Run</button>
+      <button class="btn btn-secondary" id="btn-toggle-files" title="Toggle Files">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+          <path d="M3 9h18"/><path d="M9 21V9"/>
+        </svg>
+        Files
+      </button>
+      <button class="btn btn-danger" id="btn-stop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="14" height="14" x="5" y="5" rx="2"/>
+        </svg>
+        Stop
+      </button>
+      <button class="btn btn-primary" id="btn-run">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        Run
+      </button>
     </div>
 
     <!-- File Bar -->
     <div class="filebar">
       <select id="file-select">
-        <option value="">⬇ Load script…</option>
+        <option value="">Load script...</option>
       </select>
-      <button class="btn btn-secondary" id="btn-save">💾 Save</button>
-      <button class="btn btn-secondary" id="btn-new">＋ New</button>
+      <button class="btn btn-secondary" id="btn-save">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+          <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/>
+          <path d="M7 3v4a1 1 0 0 0 1 1h7"/>
+        </svg>
+        Save
+      </button>
+      <button class="btn btn-secondary" id="btn-new">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"/><path d="M12 5v14"/>
+        </svg>
+        New
+      </button>
       <span class="file-status" id="file-status">unsaved</span>
     </div>
 
@@ -344,8 +436,7 @@
 local w, h = screen.get_size()
 touch.tap(w/2, h/2)
 sys.log("Tapped center: " .. w .. "x" .. h)
-</textarea
-      >
+</textarea>
     </div>
 
     <!-- Output Panel -->
@@ -354,11 +445,11 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         <div class="status-dot" id="status-dot"></div>
         <span id="status-text">Idle</span>
         <div style="flex: 1"></div>
-        <button
-          class="btn btn-secondary"
-          style="padding: 2px 8px; font-size: 11px"
-          id="btn-clear-out"
-        >
+        <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px" id="btn-clear-out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px">
+            <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+          </svg>
           Clear
         </button>
       </div>
@@ -377,22 +468,34 @@ sys.log("Tapped center: " .. w .. "x" .. h)
     <!-- File Panel (right sidebar) -->
     <div class="file-panel" id="file-panel">
       <div class="file-panel-header">
-        <span>📁 Scripts</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+          <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+        </svg>
+        <span>Scripts</span>
         <div class="sep"></div>
-        <button class="btn btn-secondary" style="padding:2px 8px;font-size:11px" id="btn-new-file">＋ New</button>
+        <button class="btn btn-secondary" style="padding:2px 8px;font-size:10px" id="btn-new-file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14"/><path d="M12 5v14"/>
+          </svg>
+        </button>
       </div>
       <div class="file-panel-list" id="file-panel-list">
-        <div class="fp-empty">No scripts yet</div>
+        <div class="fp-empty">No scripts yet.<br/>Create or load one above.</div>
       </div>
     </div>
     </div> <!-- close main-row -->
 
     <script>
-      const PORT = location.port || 46952;
-      const API = `http://${location.hostname}:${PORT}`;
+      var PORT = location.port || 46952;
+      var API = "http://" + location.hostname + ":" + PORT;
 
-      // ── CodeMirror init ──────────────────────────────────────────────────────────
-      const cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
+      // SVG strings for icons
+      var fileSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+      var trashSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+
+      // ── CodeMirror init ──
+      var cm = CodeMirror.fromTextArea(document.getElementById("editor"), {
         mode: "lua",
         theme: "dracula",
         lineNumbers: true,
@@ -402,210 +505,167 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         indentWithTabs: false,
         electricChars: true,
         extraKeys: {
-          "Ctrl-S": () => saveScript(),
-          F5: () => runScript(),
-          "Ctrl-Enter": () => runScript(),
-          "Ctrl-/": (cm) => cm.execCommand("toggleComment"),
+          "Ctrl-S": function() { saveScript(); },
+          F5: function() { runScript(); },
+          "Ctrl-Enter": function() { runScript(); },
+          "Ctrl-/": function(cm) { cm.execCommand("toggleComment"); },
           "Ctrl-F": "find",
           "Ctrl-H": "replace",
         },
       });
 
-      // Resize CM to fill editor-wrap
-      const editorWrap = document.querySelector(".editor-wrap");
-      const ro = new ResizeObserver(() =>
-        cm.setSize("100%", editorWrap.offsetHeight),
-      );
+      var editorWrap = document.querySelector(".editor-wrap");
+      var ro = new ResizeObserver(function() {
+        cm.setSize("100%", editorWrap.offsetHeight);
+      });
       ro.observe(editorWrap);
 
-      // Cursor position
-      cm.on("cursorActivity", () => {
-        const c = cm.getCursor();
-        document.getElementById("sb-cursor").textContent =
-          `Ln ${c.line + 1}, Col ${c.ch + 1}`;
-        document.getElementById("sb-lines").textContent =
-          `Lines: ${cm.lineCount()}`;
+      cm.on("cursorActivity", function() {
+        var c = cm.getCursor();
+        document.getElementById("sb-cursor").textContent = "Ln " + (c.line + 1) + ", Col " + (c.ch + 1);
+        document.getElementById("sb-lines").textContent = "Lines: " + cm.lineCount();
       });
-      cm.on("change", () => {
-        document.getElementById("file-status").textContent = "● modified";
-        document.getElementById("file-status").className =
-          "file-status modified";
+      cm.on("change", function() {
+        document.getElementById("file-status").textContent = "modified";
+        document.getElementById("file-status").className = "file-status modified";
       });
 
-      // ── Lua API autocomplete hints ───────────────────────────────────────────────
-      const LUA_HINTS = [
-        "sys.log(",
-        "sys.toast(",
-        "sys.sleep(",
-        "sys.msleep(",
-        "touch.tap(",
-        "touch.swipe(",
-        "touch.long_press(",
-        "touch.down(",
-        "touch.move(",
-        "touch.up(",
-        "touch.tap_image(",
-        "touch.tap_text(",
-        "screen.get_size(",
-        "screen.get_color(",
-        "screen.capture(",
-        "screen.ocr(",
-        "screen.find_color(",
-        "screen.find_multi_color(",
-        "app.launch(",
-        "app.kill(",
-        "app.list(",
-        "app.frontmost(",
-        "app.is_running(",
-        "key.press(",
-        "key.input_text(",
-        "clipboard.read(",
-        "clipboard.write(",
+      // ── Lua autocomplete ──
+      var LUA_HINTS = [
+        "sys.log(", "sys.toast(", "sys.sleep(", "sys.msleep(", "sys.time(", "sys.date(",
+        "sys.getenv(", "sys.home(", "sys.lock(", "sys.alert(",
+        "touch.tap(", "touch.swipe(", "touch.long_press(", "touch.down(", "touch.move(", "touch.up(",
+        "touch.tap_image(", "touch.tap_text(",
+        "screen.get_size(", "screen.get_color(", "screen.capture(", "screen.ocr(",
+        "screen.find_color(", "screen.find_multi_color(", "screen.find_text(", "screen.find_image(",
+        "app.launch(", "app.kill(", "app.list(", "app.frontmost(", "app.is_running(",
+        "key.press(", "key.down(", "key.up(", "key.input_text(",
+        "clipboard.read(", "clipboard.write(",
+        "json.encode(", "json.decode(", "base64.encode(", "base64.decode(",
+        "re.match(", "re.gmatch(", "re.gsub(", "re.test(",
+        "http.get(", "http.post(",
+        "timer.sleep(", "timer.now(",
+        "file.read(", "file.write(", "file.append(", "file.clear(",
       ];
-      CodeMirror.registerHelper("hint", "lua", (cm) => {
-        const cur = cm.getCursor(),
-          line = cm.getLine(cur.line);
-        const start = cur.ch,
-          end = cur.ch;
-        const word = line.slice(0, start);
-        const list = LUA_HINTS.filter((h) =>
-          h.toLowerCase().startsWith(
-            word
-              .split(/[\s,()\[\]{}]+/)
-              .pop()
-              .toLowerCase(),
-          ),
-        );
+      CodeMirror.registerHelper("hint", "lua", function(cm) {
+        var cur = cm.getCursor();
+        var line = cm.getLine(cur.line);
+        var start = cur.ch;
+        var word = line.slice(0, start);
+        var list = LUA_HINTS.filter(function(h) {
+          return h.toLowerCase().startsWith(word.split(/[\s,()\[\]{}]+/).pop().toLowerCase());
+        });
         return {
-          list,
-          from: CodeMirror.Pos(
-            cur.line,
-            start - word.split(/[\s,()\[\]{}]+/).pop().length,
-          ),
-          to: CodeMirror.Pos(cur.line, end),
+          list: list,
+          from: CodeMirror.Pos(cur.line, start - word.split(/[\s,()\[\]{}]+/).pop().length),
+          to: CodeMirror.Pos(cur.line, start),
         };
       });
-      cm.on("inputRead", (cm, change) => {
+      cm.on("inputRead", function(cm, change) {
         if (change.text[0] && /\w|\./.test(change.text[0])) {
           cm.showHint({ hint: CodeMirror.hint.lua, completeSingle: false });
         }
       });
 
-      // ── File management ──────────────────────────────────────────────────────────
-      let currentFile = "";
+      // ── File management ──
+      var currentFile = "";
 
       async function loadFileList() {
         try {
-          const r = await fetch(`${API}/api/script/list`);
-          const j = await r.json();
-          const sel = document.getElementById("file-select");
-          sel.innerHTML = '<option value="">⬇ Load script…</option>';
-          (j.scripts || []).forEach((name) => {
-            const o = document.createElement("option");
-            o.value = o.textContent = name;
+          var r = await fetch(API + "/api/script/list");
+          var j = await r.json();
+          var sel = document.getElementById("file-select");
+          sel.innerHTML = '<option value="">Load script...</option>';
+          (j.scripts || []).forEach(function(name) {
+            var o = document.createElement("option");
+            o.value = name;
+            o.textContent = name;
             sel.appendChild(o);
           });
-        } catch (e) {
-          console.error("loadFileList", e);
-        }
+        } catch (e) { console.error("loadFileList", e); }
       }
 
-      document
-        .getElementById("file-select")
-        .addEventListener("change", async (e) => {
-          const name = e.target.value;
-          if (!name) return;
-          try {
-            const r = await fetch(
-              `${API}/api/script/file?name=${encodeURIComponent(name)}`,
-            );
-            const text = await r.text();
-            cm.setValue(text);
-            cm.clearHistory();
-            currentFile = name;
-            window.location.hash = encodeURIComponent(name);
-            document.getElementById("sb-file").textContent = name;
-            document.getElementById("file-status").textContent = "saved";
-            document.getElementById("file-status").className = "file-status";
-          } catch (e) {
-            appendOutput("❌ Load failed: " + e.message);
-          }
-        });
+      document.getElementById("file-select").addEventListener("change", async function(e) {
+        var name = e.target.value;
+        if (!name) return;
+        try {
+          var r = await fetch(API + "/api/script/file?name=" + encodeURIComponent(name));
+          var text = await r.text();
+          cm.setValue(text);
+          cm.clearHistory();
+          currentFile = name;
+          window.location.hash = encodeURIComponent(name);
+          document.getElementById("sb-file").textContent = name;
+          document.getElementById("file-status").textContent = "saved";
+          document.getElementById("file-status").className = "file-status saved";
+        } catch (e) { appendOutput("Load failed: " + e.message, true); }
+      });
 
       async function saveScript() {
         if (!currentFile) {
-          const name = prompt("Save as (without .lua):");
+          var name = prompt("Save as (without .lua):");
           if (!name) return;
           currentFile = name.endsWith(".lua") ? name : name + ".lua";
           document.getElementById("sb-file").textContent = currentFile;
         }
         try {
-          await fetch(
-            `${API}/api/script/file?name=${encodeURIComponent(currentFile)}`,
-            {
-              method: "PUT",
-              body: cm.getValue(),
-              headers: { "Content-Type": "text/plain" },
-            },
-          );
-          document.getElementById("file-status").textContent = "✓ saved";
-          document.getElementById("file-status").className = "file-status";
+          await fetch(API + "/api/script/file?name=" + encodeURIComponent(currentFile), {
+            method: "PUT",
+            body: cm.getValue(),
+            headers: { "Content-Type": "text/plain" },
+          });
+          document.getElementById("file-status").textContent = "saved";
+          document.getElementById("file-status").className = "file-status saved";
           await loadFileList();
-        } catch (e) {
-          appendOutput("❌ Save failed: " + e.message);
-        }
+        } catch (e) { appendOutput("Save failed: " + e.message, true); }
       }
 
       document.getElementById("btn-save").addEventListener("click", saveScript);
-      document.getElementById("btn-new").addEventListener("click", () => {
+      document.getElementById("btn-new").addEventListener("click", function() {
         currentFile = "";
         cm.setValue("-- New Script\n\n");
         document.getElementById("sb-file").textContent = "untitled.lua";
         document.getElementById("file-status").textContent = "unsaved";
+        document.getElementById("file-status").className = "file-status";
         cm.focus();
       });
 
-      // ── Script execution ─────────────────────────────────────────────────────────
-      let statusPoll;
+      // ── Script execution ──
+      var statusPoll;
 
-      async function runScript() {
-        const code = cm.getValue();
+      function runScript() {
+        var code = cm.getValue();
         setStatus("running");
-        appendOutput("▶ Running...\n");
-        try {
-          await fetch(`${API}/api/script/run`, {
-            method: "POST",
-            body: code,
-            headers: { "Content-Type": "text/plain" },
-          });
+        appendOutput("> Running...\n");
+        fetch(API + "/api/script/run", {
+          method: "POST",
+          body: code,
+          headers: { "Content-Type": "text/plain" },
+        }).then(function() {
           statusPoll = setInterval(pollStatus, 500);
-        } catch (e) {
-          appendOutput("❌ " + e.message);
+        }).catch(function(e) {
+          appendOutput("Error: " + e.message + "\n", true);
           setStatus("idle");
-        }
+        });
       }
 
       async function pollStatus() {
         try {
-          const r = await fetch(`${API}/api/script/status`);
-          const j = await r.json();
+          var r = await fetch(API + "/api/script/status");
+          var j = await r.json();
           if (j.status !== "running") {
             clearInterval(statusPoll);
             setStatus(j.status === "error" ? "error" : "idle");
-            if (j.error) appendOutput("❌ Error: " + j.error);
-            else if (j.status === "idle") appendOutput("✅ Completed\n");
+            if (j.error) appendOutput("Error: " + j.error + "\n", true);
+            else if (j.status === "idle") appendOutput("Completed\n", false, true);
           }
-          // Fetch log delta
-          const lr = await fetch(`${API}/api/system/log`);
-          const lt = await lr.text();
-          const luaLines = lt
-            .split("\n")
-            .filter((l) => l.includes("[Lua]"))
-            .slice(-5);
+          var lr = await fetch(API + "/api/system/log");
+          var lt = await lr.text();
+          var luaLines = lt.split("\n").filter(function(l) { return l.indexOf("[Lua]") !== -1; }).slice(-5);
           if (luaLines.length) {
-            const out = document.getElementById("output");
-            const last = out.dataset.lastLog || "";
-            const newLines = luaLines.filter((l) => !last.includes(l));
+            var out = document.getElementById("output");
+            var last = out.dataset.lastLog || "";
+            var newLines = luaLines.filter(function(l) { return last.indexOf(l) === -1; });
             if (newLines.length) {
               appendOutput(newLines.join("\n") + "\n");
               out.dataset.lastLog = luaLines.join("\n");
@@ -618,141 +678,140 @@ sys.log("Tapped center: " .. w .. "x" .. h)
       }
 
       document.getElementById("btn-run").addEventListener("click", runScript);
-      document
-        .getElementById("btn-stop")
-        .addEventListener("click", async () => {
-          await fetch(`${API}/api/script/stop`, { method: "POST" });
-          clearInterval(statusPoll);
-          setStatus("idle");
-          appendOutput("⏹ Stopped\n");
-        });
-      document.getElementById("btn-clear-out").addEventListener("click", () => {
-        document.getElementById("output").textContent = "";
-        document.getElementById("output").dataset.lastLog = "";
+      document.getElementById("btn-stop").addEventListener("click", async function() {
+        await fetch(API + "/api/script/stop", { method: "POST" });
+        clearInterval(statusPoll);
+        setStatus("idle");
+        appendOutput("Stopped\n");
+      });
+      document.getElementById("btn-clear-out").addEventListener("click", function() {
+        var out = document.getElementById("output");
+        out.textContent = "";
+        out.dataset.lastLog = "";
       });
 
       function setStatus(s) {
-        const dot = document.getElementById("status-dot");
-        const txt = document.getElementById("status-text");
-        dot.className =
-          "status-dot" +
-          (s === "running" ? " running" : s === "error" ? " error" : "");
+        var dot = document.getElementById("status-dot");
+        var txt = document.getElementById("status-text");
+        dot.className = "status-dot" + (s === "running" ? " running" : s === "error" ? " error" : "");
         txt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
       }
-      function appendOutput(text) {
-        const el = document.getElementById("output");
-        el.textContent += text;
+      function appendOutput(text, isError, isOk) {
+        var el = document.getElementById("output");
+        var span = document.createElement("span");
+        span.className = isError ? "err" : (isOk ? "ok" : "");
+        span.textContent = text;
+        el.appendChild(span);
         el.scrollTop = el.scrollHeight;
       }
 
-      // ── File Panel (right sidebar) ────────────────────────────────────────────
-      document.getElementById('btn-toggle-files').addEventListener('click', () => {
-        document.getElementById('file-panel').classList.toggle('hidden');
-        setTimeout(() => cm.refresh(), 50);
+      // ── File Panel ──
+      document.getElementById("btn-toggle-files").addEventListener("click", function() {
+        document.getElementById("file-panel").classList.toggle("hidden");
+        setTimeout(function() { cm.refresh(); }, 50);
       });
 
       async function refreshFilePanel() {
         try {
-          const r = await fetch(`${API}/api/script/list`);
-          const j = await r.json();
-          const list = document.getElementById('file-panel-list');
-          const scripts = j.scripts || [];
+          var r = await fetch(API + "/api/script/list");
+          var j = await r.json();
+          var list = document.getElementById("file-panel-list");
+          var scripts = j.scripts || [];
           if (scripts.length === 0) {
-            list.innerHTML = '<div class="fp-empty">No scripts yet</div>';
+            list.innerHTML = '<div class="fp-empty">No scripts yet.<br/>Create or load one above.</div>';
             return;
           }
-          list.innerHTML = scripts.map(name => `
-            <div class="fp-item ${name === currentFile ? 'active' : ''}" data-name="${name}">
-              <i class="material-icons">description</i>
-              <span class="fp-name">${name}</span>
-              <span class="fp-del" data-del="${name}" title="Delete">✕</span>
-            </div>
-          `).join('');
+          var html = scripts.map(function(name) {
+            return '<div class="fp-item ' + (name === currentFile ? 'active' : '') + '" data-name="' + name + '">' +
+              fileSVG + '<span class="fp-name">' + name + '</span>' +
+              '<span class="fp-del" data-del="' + name + '" title="Delete">' + trashSVG + '</span></div>';
+          }).join("");
+          list.innerHTML = html;
 
-          // Click to load
-          list.querySelectorAll('.fp-item').forEach(el => {
-            el.addEventListener('click', async (e) => {
-              if (e.target.classList.contains('fp-del')) return;
-              const name = el.dataset.name;
+          list.querySelectorAll(".fp-item").forEach(function(el) {
+            el.addEventListener("click", async function(e) {
+              if (e.target.closest(".fp-del")) return;
+              var name = el.dataset.name;
               try {
-                const r = await fetch(`${API}/api/script/file?name=${encodeURIComponent(name)}`);
-                const text = await r.text();
+                var r = await fetch(API + "/api/script/file?name=" + encodeURIComponent(name));
+                var text = await r.text();
                 cm.setValue(text);
                 cm.clearHistory();
                 currentFile = name;
-                document.getElementById('sb-file').textContent = name;
-                document.getElementById('file-status').textContent = 'saved';
-                document.getElementById('file-status').className = 'file-status';
-                document.getElementById('file-select').value = name;
+                document.getElementById("sb-file").textContent = name;
+                document.getElementById("file-status").textContent = "saved";
+                document.getElementById("file-status").className = "file-status saved";
+                document.getElementById("file-select").value = name;
                 refreshFilePanel();
-              } catch(e) { appendOutput('❌ Load failed: ' + e.message); }
+              } catch(e) { appendOutput("Load failed: " + e.message + "\n", true); }
             });
           });
 
-          // Delete buttons
-          list.querySelectorAll('.fp-del').forEach(el => {
-            el.addEventListener('click', async (e) => {
+          list.querySelectorAll(".fp-del").forEach(function(el) {
+            el.addEventListener("click", async function(e) {
               e.stopPropagation();
-              const name = el.dataset.del;
-              if (!confirm(`Delete "${name}"?`)) return;
+              var name = el.dataset.del;
+              if (!confirm("Delete \"" + name + "\"?")) return;
               try {
-                await fetch(`${API}/api/script/file?name=${encodeURIComponent(name)}`, { method: 'DELETE' });
+                await fetch(API + "/api/script/file?name=" + encodeURIComponent(name), { method: "DELETE" });
                 if (currentFile === name) {
-                  currentFile = '';
-                  cm.setValue('-- New Script\n\n');
-                  document.getElementById('sb-file').textContent = 'untitled.lua';
+                  currentFile = "";
+                  cm.setValue("-- New Script\n\n");
+                  document.getElementById("sb-file").textContent = "untitled.lua";
                 }
                 await loadFileList();
                 refreshFilePanel();
-              } catch(e) { appendOutput('❌ Delete failed: ' + e.message); }
+              } catch(e) { appendOutput("Delete failed: " + e.message + "\n", true); }
             });
           });
-        } catch(e) { console.error('refreshFilePanel', e); }
+        } catch(e) { console.error("refreshFilePanel", e); }
       }
 
-      document.getElementById('btn-new-file').addEventListener('click', () => {
-        currentFile = '';
-        cm.setValue('-- New Script\n\n');
-        document.getElementById('sb-file').textContent = 'untitled.lua';
-        document.getElementById('file-status').textContent = 'unsaved';
+      document.getElementById("btn-new-file").addEventListener("click", function() {
+        currentFile = "";
+        cm.setValue("-- New Script\n\n");
+        document.getElementById("sb-file").textContent = "untitled.lua";
+        document.getElementById("file-status").textContent = "unsaved";
+        document.getElementById("file-status").className = "file-status";
         cm.focus();
         refreshFilePanel();
       });
 
-      // Sync file panel when loadFileList runs
-      const origLoadFileList = loadFileList;
+      var origLoadFileList = loadFileList;
       loadFileList = async function() {
         await origLoadFileList();
         refreshFilePanel();
       };
 
-      // ── Init ──────────────────────────────────────────────────────────────────────
+      // ── Init ──
       loadFileList();
 
-      // Auto-load script from URL hash (e.g. script_edit.html#myscript.lua)
       if (window.location.hash) {
-        const hashName = decodeURIComponent(window.location.hash.slice(1));
+        var hashName = decodeURIComponent(window.location.hash.slice(1));
         if (hashName) {
-          setTimeout(async () => {
+          setTimeout(async function() {
             try {
-              const r = await fetch(
-                `${API}/api/script/file?name=${encodeURIComponent(hashName)}`,
-              );
+              var r = await fetch(API + "/api/script/file?name=" + encodeURIComponent(hashName));
               if (r.ok) {
-                const text = await r.text();
+                var text = await r.text();
                 cm.setValue(text);
                 cm.clearHistory();
                 currentFile = hashName;
                 document.getElementById("sb-file").textContent = hashName;
                 document.getElementById("file-status").textContent = "saved";
-                document.getElementById("file-status").className =
-                  "file-status";
+                document.getElementById("file-status").className = "file-status saved";
               }
-            } catch (e) {
-              console.error("Auto-load from hash failed:", e);
-            }
+            } catch (e) { console.error("Auto-load from hash failed:", e); }
           }, 500);
         }
+      }
+
+      // Expose runScript globally
+      window.runScript = runScript;
+
+      // Lucide init
+      if (typeof lucide !== "undefined") {
+        lucide.createIcons();
       }
     </script>
   </body>

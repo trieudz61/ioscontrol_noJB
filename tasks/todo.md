@@ -294,55 +294,16 @@
 
 ---
 
-## 🗓️ Phase 12: IDE Refactoring + Bug Fixes + New APIs ✅ (Build #97, v0.5.1)
-
-> Cập nhật: 2026-04-02 23:10 — pushed to git
-
-### 12a: Web IDE Inline Refactoring ✅
-
-- [x] Move Script Editor lên đầu drawer (trên Live Screen)
-- [x] Xoá tab Files → chuyển File Browser thành sidebar trong Script Editor
-- [x] Xoá Matrix Dict khỏi drawer
-- [x] Inline toàn bộ 5 Tools vào IDE qua iframe (lazy-load `data-src`)
-  - [x] Color Picker, App List, Device Control, API Docs, Template Maker
-  - [x] Không mở tab mới nữa, tất cả load trong IDE
-- [x] Fix copy/paste trên HTTP (execCommand fallback)
-
-### 12b: UI Bug Fixes ✅
-
-- [x] Fix CodeMirror gutter (số dòng) đè code — `margin-left: 48px`
-- [x] Fix Clear Log button — gửi `DELETE /api/system/log` tới backend
-- [x] Fix Settings Screen Capture controls — quality/interval was hardcoded `40`/`150ms`, now reads `config.quality`/`config.interval`
-
-### 12c: Backend Bug Fixes ✅
-
-- [x] **Fix `app.kill()`** — removed broken `terminateApplicationWithBundleID:` (silently failed), new: SIGTERM→SIGKILL via PID + `killall -9` via `posix_spawn`
-- [x] **Fix `app.is_running()` crash** — removed broken `performSelector` on non-existent LSWorkspace selectors, new: PID-based check via `findPidForBundleID`
-- [x] **Fix `app.frontmost()` crash** — removed broken `SBApplicationController` calls, new: `dlopen` SpringBoardServices + `SBSCopyFrontmostApplicationDisplayIdentifier`
-
-### 12d: Performance ✅
-
-- [x] **Optimize `screen.find_image()`** — 2-phase pyramid: coarse scan stride=4 + sample every 4th pixel (~256x faster), then refine ±8px at full resolution. Expected: seconds → ~100-300ms on iPhone 8
-- [x] Added timing logs: `✅ [findImage] Match 95.2% at (375, 667) in 180ms`
-
-### 12e: New Lua APIs ✅
-
-- [x] `touch.tap_image(path [, threshold])` — find template + tap center
-- [x] `touch.tap_text(text)` — OCR find + tap location
-- [x] Autocomplete hints updated in Script Editor
-
----
-
 ## 🗓️ Tiếp theo (chưa plan)
 
 ### Ưu tiên cao
 - [ ] Test toàn bộ BUG fixes đã implement trên device
 - [ ] Fix BUG-4: Console duplicate log lines
-- [ ] Verify `app.kill` / `app.is_running` / `app.frontmost` hoạt động
+- [ ] Build & deploy phiên bản mới nhất lên device
 
 ### Ưu tiên trung bình
-- [ ] Fix BUG-8: screen.get_size() init (trả 0,0 khi chưa capture)
-- [ ] Fix BUG-9: Picker touch scroll conflict trên iPhone
+- [ ] Fix BUG-8: screen.get_size() init
+- [ ] Fix BUG-9: Picker touch scroll conflict
 - [ ] Thêm Lua API: `sys.home()`, `sys.lock()` (đã có ic_pressKey, cần expose)
 
 ### Nice to have
@@ -350,4 +311,3 @@
 - [ ] Daemon microservices 10e
 - [ ] CI/CD pipeline (auto build + push)
 - [ ] OTA update mechanism
-

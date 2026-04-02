@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>ICToastService</string>
     <key>CFBundleIdentifier</key>
-    <string>com.trieu.ictoastservice</string>
+    <string>com.trieu.ioscontrol.ictoastservice</string>
     <key>CFBundleName</key>
     <string>ICToastService</string>
     <key>CFBundlePackageType</key>

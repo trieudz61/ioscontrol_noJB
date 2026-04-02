@@ -1,10 +1,20 @@
 // ═══════════════════════════════════════════
-// IOSControl Web IDE — app.js
-// Premium SPA with MDUI patterns
+// IOSControl Web IDE — Neon Glass Theme
+// Lucide Icons + Glassmorphism
 // ═══════════════════════════════════════════
 
 (function () {
   "use strict";
+
+  // ─── Lucide SVG strings (inline for runtime icon swaps) ───
+  var LUCIDE = {
+    'alert-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    'check-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    'info': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    'pause': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>',
+    'play': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    'home': '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  };
 
   // ─── Config ───
   var config = {
@@ -17,15 +27,11 @@
 
   // ─── State ───
   var state = {
-    // Logical points (what touch.tap uses) — from /api/status
     pointsW: 0,
     pointsH: 0,
-    // Physical image pixels — from img.width/height after capture
     imgW: 0,
     imgH: 0,
-    // Display scale: drawCanvas / imgPixels
     scrScale: 1,
-    // Original image dimensions before rotation swap
     origW: 0,
     origH: 0,
     rotation: 0,
@@ -33,7 +39,7 @@
     dragStartX: 0,
     dragStartY: 0,
     dragMoved: false,
-    lastMoveTime: 0, // for throttling touchmove → prevent kernel panic
+    lastMoveTime: 0,
     lastMoveX: 0,
     lastMoveY: 0,
     screenTimer: null,
@@ -67,17 +73,16 @@
     var iconEl = $("snackbar-icon");
     textEl.textContent = msg;
 
-    // Reset classes
     el.className = "snackbar";
 
     if (type === "error") {
-      iconEl.textContent = "error_outline";
+      iconEl.innerHTML = LUCIDE['alert-circle'];
       el.classList.add("error");
     } else if (type === "success") {
-      iconEl.textContent = "check_circle";
+      iconEl.innerHTML = LUCIDE['check-circle'];
       el.classList.add("success");
     } else {
-      iconEl.textContent = "info";
+      iconEl.innerHTML = LUCIDE['info'];
     }
 
     el.classList.add("show");
@@ -102,12 +107,8 @@
         cb(xhr.statusText);
       }
     };
-    xhr.onerror = function () {
-      cb("network error");
-    };
-    xhr.ontimeout = function () {
-      cb("timeout");
-    };
+    xhr.onerror = function () { cb("network error"); };
+    xhr.ontimeout = function () { cb("timeout"); };
     xhr.send();
   }
 
@@ -118,18 +119,15 @@
     xhr.timeout = 5000;
     xhr.onload = function () {
       if (cb) {
-        try {
-          cb(null, JSON.parse(xhr.responseText));
-        } catch (e) {
-          cb(null, xhr.responseText);
-        }
+        try { cb(null, JSON.parse(xhr.responseText)); }
+        catch (e) { cb(null, xhr.responseText); }
       }
     };
-    xhr.onerror = function () {
-      if (cb) cb("network error");
-    };
+    xhr.onerror = function () { if (cb) cb("network error"); };
     xhr.send(JSON.stringify(data));
   }
+
+  function logMsg(msg) { console.log(msg); }
 
   // ═══════════════════════════════════════════
   // Loading Overlay
@@ -139,15 +137,13 @@
     var el = $("loading-overlay");
     if (el) {
       el.classList.add("hidden");
-      // Remove from DOM after transition
       setTimeout(function () {
         if (el.parentNode) el.parentNode.removeChild(el);
       }, 600);
     }
   }
 
-  // Hide after first status check (success or fail)
-  setTimeout(hideLoadingOverlay, 3000); // Max 3s
+  setTimeout(hideLoadingOverlay, 3000);
 
   // ═══════════════════════════════════════════
   // Drawer Navigation
@@ -170,7 +166,6 @@
   });
   overlay.addEventListener("click", closeDrawer);
 
-  // Tab titles and actions
   var tabTitles = {
     screen: "Live Screen",
     script: "Script Editor",
@@ -185,7 +180,6 @@
 
   var tabActions = {
     screen: "screen-actions",
-    script: "script-actions",
     log: "log-actions",
   };
 
@@ -200,26 +194,20 @@
   function switchTab(tab) {
     state.activeTab = tab;
 
-    // Update drawer active state
     document.querySelectorAll(".drawer-item").forEach(function (el) {
       el.classList.remove("active");
     });
-    var activeItem = document.querySelector(
-      '.drawer-item[data-tab="' + tab + '"]',
-    );
+    var activeItem = document.querySelector('.drawer-item[data-tab="' + tab + '"]');
     if (activeItem) activeItem.classList.add("active");
 
-    // Update tab content
     document.querySelectorAll(".tab-content").forEach(function (el) {
       el.classList.remove("active");
     });
     var tabEl = $("tab-" + tab);
     if (tabEl) tabEl.classList.add("active");
 
-    // Update toolbar title
     $("toolbar-title").textContent = tabTitles[tab] || tab;
 
-    // Show/hide toolbar actions
     document.querySelectorAll(".toolbar-actions").forEach(function (el) {
       el.classList.add("hidden");
     });
@@ -227,11 +215,9 @@
       $(tabActions[tab]).classList.remove("hidden");
     }
 
-    // Show/hide FAB
     var fab = $("fab-run");
     fab.classList.toggle("hidden", tab !== "script");
 
-    // Start/stop screen polling
     if (tab === "screen") {
       startScreenCapture();
       startFPSCounter();
@@ -240,14 +226,13 @@
       stopFPSCounter();
     }
 
-    // Start/stop log polling
     if (tab === "log") {
       startLogPolling();
     } else {
       stopLogPolling();
     }
 
-    // Lazy-load iframe tabs (data-src → src on first visit)
+    // Lazy-load iframe tabs
     if (tabEl) {
       var iframe = tabEl.querySelector('iframe[data-src]');
       if (iframe && !iframe.src) {
@@ -258,7 +243,7 @@
   }
 
   // ═══════════════════════════════════════════
-  // Screen Capture — JPEG polling
+  // Screen Capture
   // ═══════════════════════════════════════════
 
   function startScreenCapture() {
@@ -281,9 +266,7 @@
     }
   }
 
-  // ── Draw helper: scale+rotate any Image onto canvas ──
   function drawImageToCanvas(img) {
-    // Store physical pixel dimensions
     state.imgW = img.naturalWidth || img.width;
     state.imgH = img.naturalHeight || img.height;
     state.origW = state.imgW;
@@ -291,7 +274,6 @@
     if (!state.pointsW) state.pointsW = state.imgW;
     if (!state.pointsH) state.pointsH = state.imgH;
 
-    // Hide placeholder on first frame
     if (!state.hasReceivedFrame) {
       state.hasReceivedFrame = true;
       var ph = $("screen-placeholder");
@@ -299,7 +281,6 @@
       hideLoadingOverlay();
     }
 
-    // Auto-fit canvas to container
     var container = $("screen-container");
     var bottomBar = 32;
     var cw = container.clientWidth;
@@ -339,14 +320,10 @@
       ctx.drawImage(img, 0, 0, drawW, drawH);
     }
 
-    $("screen-resolution").textContent = state.origW + " × " + state.origH;
+    $("screen-resolution").textContent = state.origW + " x " + state.origH;
     state.frameCount++;
   }
 
-  // ── Screen capture: XXTouch HTTP polling pattern ──
-  // Browser polls /api/screen every 20ms after successful frame load.
-  // Daemon serves gCachedFrame (background 80ms timer) = almost instant response.
-  // Completely independent of WS touch channel — zero contention.
   var screenPollImg = null;
   var screenPollRunning = false;
 
@@ -364,19 +341,11 @@
       setTimeout(screenPollNext, config.interval || 100);
     };
     screenPollImg.onerror = function () {
-      setTimeout(screenPollNext, 500); // back off on error
+      setTimeout(screenPollNext, 500);
     };
   }
 
-  function startMJPEGStream() {
-    startScreenPoll();
-  }
-  function captureFramePoll() {
-    startScreenPoll();
-  }
-  function captureFrame() {
-    startScreenPoll();
-  }
+  function captureFrame() { startScreenPoll(); }
 
   function startScreenPoll() {
     if (screenPollRunning) return;
@@ -421,56 +390,35 @@
   // Touch Control
   // ═══════════════════════════════════════════
 
-  // unrotateXY: from image-pixel space to logical-point space
-  // Works in pixel space first, then scales to points
   function unrotateXY(px, py) {
-    // px/py are in image-pixel coordinates after undoing scrScale
     var iw = state.imgW || state.pointsW || 1;
     var ih = state.imgH || state.pointsH || 1;
     var pw = state.pointsW || iw;
     var ph = state.pointsH || ih;
     var rx, ry;
     switch (state.rotation) {
-      case 1:
-        rx = iw - py - 1;
-        ry = px;
-        break;
-      case 2:
-        rx = py;
-        ry = ih - px - 1;
-        break;
-      case 3:
-        rx = iw - px - 1;
-        ry = ih - py - 1;
-        break;
-      default:
-        rx = px;
-        ry = py;
-        break;
+      case 1: rx = iw - py - 1; ry = px; break;
+      case 2: rx = py; ry = ih - px - 1; break;
+      case 3: rx = iw - px - 1; ry = ih - py - 1; break;
+      default: rx = px; ry = py; break;
     }
-    // Scale from image-pixels to logical points
     return {
       x: Math.round((rx * pw) / iw),
       y: Math.round((ry * ph) / ih),
     };
   }
 
-  // canvasToDevice: canvas display coords → logical points (same as touch.tap)
   function canvasToDevice(canvasX, canvasY) {
-    // Step 1: undo display scaling → image pixel space
     var imgPx = canvasX / state.scrScale;
     var imgPy = canvasY / state.scrScale;
-    // Step 2: unrotate + scale to logical points
     return unrotateXY(imgPx, imgPy);
   }
 
-  // Show touch ripple indicator on canvas
   function showTouchRipple(canvasRelX, canvasRelY) {
     if (!config.showTouchIndicator) return;
     var container = $("screen-container");
     var containerRect = container.getBoundingClientRect();
     var canvasRect = canvas.getBoundingClientRect();
-    // Position ripple relative to screen-container (which is position:relative)
     var relX = canvasRect.left - containerRect.left + canvasRelX;
     var relY = canvasRect.top - containerRect.top + canvasRelY;
     var ripple = document.createElement("div");
@@ -483,8 +431,6 @@
     }, 450);
   }
 
-  // ── WebSocket Control Channel (/ws/control) ──
-  // Mirrors XXTouch's architecture: touch via persistent WS, screen via HTTP
   var wsControl = null;
   var wsConnecting = false;
   var wsPendingQueue = [];
@@ -492,20 +438,10 @@
 
   function wsSend(obj) {
     var msg = JSON.stringify(obj);
-    var state = wsControl ? wsControl.readyState : -1;
-    if (obj.mode !== "heart")
-      // don't spam log with hearts
-      console.log(
-        "[WS] send",
-        obj.mode,
-        "state=",
-        state,
-        "(0=CONNECTING,1=OPEN,2=CLOSE,3=CLOSED)",
-      );
     if (wsControl && wsControl.readyState === WebSocket.OPEN) {
       wsControl.send(msg);
     } else {
-      wsPendingQueue.push(msg); // buffer while connecting
+      wsPendingQueue.push(msg);
       if (!wsConnecting) initControlWS();
     }
   }
@@ -515,42 +451,34 @@
     wsConnecting = true;
     var proto = location.protocol === "https:" ? "wss:" : "ws:";
     wsControl = new WebSocket(proto + "//" + location.host + "/ws/control");
-    wsControl.binaryType = "blob"; // receive JPEG frames as Blob
+    wsControl.binaryType = "blob";
 
     wsControl.onopen = function () {
       wsConnecting = false;
-      logMsg("🔌 WS control + screen connected");
-      // Flush buffered touch events
+      logMsg("WS control connected");
       while (wsPendingQueue.length) wsControl.send(wsPendingQueue.shift());
-      // Heartbeat every 5s — server select() timeout is 80ms, no need for frequent ping
       clearInterval(wsHeartbeatTimer);
       wsHeartbeatTimer = setInterval(function () {
         if (wsControl && wsControl.readyState === WebSocket.OPEN)
           wsControl.send(JSON.stringify({ mode: "heart" }));
-      }, 1000); // every 1s like XXTouch
+      }, 1000);
     };
 
-    wsControl.onmessage = function (e) {
-      // Text only: {mode:"connected"}, {mode:"heart"} — no binary frames
-    };
+    wsControl.onmessage = function (e) {};
 
-    wsControl.onerror = function () {
-      wsConnecting = false;
-    };
+    wsControl.onerror = function () { wsConnecting = false; };
     wsControl.onclose = function () {
       wsConnecting = false;
       clearInterval(wsHeartbeatTimer);
-      logMsg("🔌 WS disconnected — reconnecting in 2s");
+      logMsg("WS disconnected - reconnecting in 2s");
       setTimeout(initControlWS, 2000);
     };
   }
 
-  // Press a physical key on the device
   function pressKey(keyName) {
     wsSend({ mode: "key", key: keyName });
   }
 
-  // Start WS immediately
   initControlWS();
 
   var isTouch = "ontouchstart" in window;
@@ -567,7 +495,6 @@
       y = e.clientY - rect.top;
     }
 
-    // Alt+click → color pick
     if (e.altKey && !isTouch) {
       pickColorAt(x, y);
       return;
@@ -579,11 +506,7 @@
     state.dragMoved = false;
 
     var pos = canvasToDevice(x, y);
-
-    // Show ripple at canvas-relative coords (BUG-4 fix)
     showTouchRipple(x, y);
-
-    // ── Send touch via WebSocket (persistent, no HTTP overhead) ──
     wsSend({ mode: "down", x: pos.x, y: pos.y });
   });
 
@@ -599,28 +522,22 @@
       y = e.clientY - rect.top;
     }
 
-    // Always update coordinate display (no throttle needed for display)
     var pos = canvasToDevice(x, y);
     $("screen-coords").textContent =
       Math.round(pos.x) + ", " + Math.round(pos.y);
 
     if (state.dragging) {
       state.dragMoved = true;
-
-      // ── CRITICAL: throttle move events to max 30fps (33ms) ──
-      // Sending too many IOHIDEvents/sec causes kernel panic (reboot)
-      // XXTouch internal rate limit is ~30 events/sec for TOUCH_MOVE
       var now = Date.now();
-      var MOVE_INTERVAL_MS = 33; // ~30fps max
+      var MOVE_INTERVAL_MS = 33;
       var dx = Math.abs(pos.x - state.lastMoveX);
       var dy = Math.abs(pos.y - state.lastMoveY);
-      var moved = dx > 1 || dy > 1; // skip sub-pixel jitter
+      var moved = dx > 1 || dy > 1;
 
       if (moved && now - state.lastMoveTime >= MOVE_INTERVAL_MS) {
         state.lastMoveTime = now;
         state.lastMoveX = pos.x;
         state.lastMoveY = pos.y;
-        // WS send is non-blocking — no HTTP roundtrip
         wsSend({ mode: "move", x: pos.x, y: pos.y });
       }
     }
@@ -657,11 +574,10 @@
     }
   });
 
-  // Right-click → Home button
   canvas.addEventListener("contextmenu", function (e) {
     e.preventDefault();
     pressKey("HOMEBUTTON");
-    snackbar("🏠 Home");
+    snackbar("Home");
     return false;
   });
 
@@ -672,7 +588,6 @@
   function pickColorAt(canvasX, canvasY) {
     if (!state.hasReceivedFrame) return;
 
-    // Read pixel from canvas
     var pixel = ctx.getImageData(
       Math.round(canvasX),
       Math.round(canvasY),
@@ -686,7 +601,6 @@
         .slice(1)
         .toUpperCase();
 
-    // Show tooltip
     var tooltip = $("color-tooltip");
     var swatch = $("color-swatch");
     var valueEl = $("color-value");
@@ -695,7 +609,6 @@
     valueEl.textContent =
       hex + " (" + pixel[0] + "," + pixel[1] + "," + pixel[2] + ")";
 
-    // Position tooltip near cursor
     var containerRect = $("screen-container").getBoundingClientRect();
     var canvasRect = canvas.getBoundingClientRect();
     tooltip.style.left =
@@ -703,7 +616,6 @@
     tooltip.style.top = canvasRect.top - containerRect.top + canvasY - 8 + "px";
     tooltip.classList.add("show");
 
-    // Copy to clipboard (execCommand fallback for HTTP)
     try {
       var ta = document.createElement('textarea');
       ta.value = hex;
@@ -714,7 +626,8 @@
       document.execCommand('copy');
       ta.remove();
     } catch(e) {}
-    snackbar("Color: " + hex + " — copied!", "success");
+
+    snackbar("Color: " + hex + " - copied!", "success");
 
     clearTimeout(tooltip._hideTimer);
     tooltip._hideTimer = setTimeout(function () {
@@ -751,7 +664,7 @@
 
   $("btn-home").addEventListener("click", function () {
     pressKey("HOMEBUTTON");
-    snackbar("🏠 Home");
+    snackbar("Home");
   });
 
   // ═══════════════════════════════════════════
@@ -765,7 +678,7 @@
 
   function stopLogPolling() {
     if (state.logTimer) {
-      clearInterval(state.logTimer);
+      clearTimeout(state.logTimer);
       state.logTimer = null;
     }
   }
@@ -784,7 +697,7 @@
         $("log-status-label").textContent = "Log service connected";
         $("log-status-dot").classList.add("connected");
       } else {
-        $("log-status-label").textContent = "Waiting for device…";
+        $("log-status-label").textContent = "Waiting for device...";
         $("log-status-dot").classList.remove("connected");
       }
     });
@@ -796,13 +709,14 @@
 
   $("btn-pause-log").addEventListener("click", function () {
     state.logPaused = !state.logPaused;
-    var icon = this.querySelector(".material-icons");
+    var iconEl = this.querySelector('.toolbar-icon');
     if (state.logPaused) {
-      icon.textContent = "play_arrow";
+      iconEl.outerHTML = LUCIDE['play'].replace('width="18"', 'width="18"').replace('id="pause-icon"', 'id="pause-icon"');
+      this.innerHTML = '<svg class="toolbar-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
       $("log-status-label").textContent = "Log paused";
       snackbar("Log paused");
     } else {
-      icon.textContent = "pause";
+      this.innerHTML = '<svg class="toolbar-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>';
       fetchLog();
       snackbar("Log resumed");
     }
@@ -811,19 +725,16 @@
   $("btn-clear-log").addEventListener("click", function () {
     $("log-textarea").value = "";
     state.lastLog = "";
-    // Also clear server-side log buffer
     fetch("/api/system/log", { method: "DELETE" }).catch(function(){});
     snackbar("Log cleared");
   });
 
-  // Log filter buttons
   document.querySelectorAll(".log-filter-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".log-filter-btn").forEach(function (b) {
         b.classList.remove("active");
       });
       this.classList.add("active");
-      // Filter is visual-only for now
       var filter = this.getAttribute("data-filter");
       snackbar("Log filter: " + filter);
     });
@@ -832,11 +743,8 @@
   // ═══════════════════════════════════════════
   // Script Editor Actions
   // ═══════════════════════════════════════════
-  // Script editor is now fully inside iframe (script_edit.html).
-  // These stubs exist only for keyboard shortcut compatibility.
 
   function runScript() {
-    // Delegate to iframe
     var iframe = $("script-iframe");
     if (iframe && iframe.contentWindow && iframe.contentWindow.runScript) {
       iframe.contentWindow.runScript();
@@ -907,23 +815,19 @@
   });
 
   document.addEventListener("keydown", function (e) {
-    // Ignore when typing in textareas
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") {
-      // Only handle Ctrl combinations in textareas
       if (!e.ctrlKey && !e.metaKey) return;
     }
 
     var key = e.key;
     var ctrl = e.ctrlKey || e.metaKey;
 
-    // Ctrl+B → Toggle drawer
     if (ctrl && key === "b") {
       e.preventDefault();
       drawer.classList.contains("open") ? closeDrawer() : openDrawer();
       return;
     }
 
-    // Ctrl+1,2,3 → Switch tabs
     if (ctrl && key === "1") {
       e.preventDefault();
       switchTab("screen");
@@ -940,14 +844,12 @@
       return;
     }
 
-    // Ctrl+S → Save
     if (ctrl && key === "s") {
       e.preventDefault();
       snackbar("Script saved (local)", "success");
       return;
     }
 
-    // Ctrl+Enter → Run script
     if (ctrl && key === "Enter") {
       e.preventDefault();
       if (state.activeTab === "script") {
@@ -956,57 +858,41 @@
       return;
     }
 
-    // Escape → Close modals
     if (key === "Escape") {
       $("shortcuts-modal").classList.remove("show");
       closeDrawer();
       return;
     }
 
-    // ── iPhone keyboard forwarding ──
-    // When screen tab is active and no Ctrl/Meta, forward keys to iPhone
+    // iPhone keyboard forwarding
     if (
       state.activeTab === "screen" &&
       !ctrl &&
       e.target.tagName !== "INPUT" &&
       e.target.tagName !== "TEXTAREA"
     ) {
-      // Map browser key names → iPhone key names
       var iphoneKey = null;
       var keyMap = {
-        Enter: "RETURN",
-        Backspace: "BACKSPACE",
-        Delete: "DEL",
-        Tab: "TAB",
-        Escape: "ESCAPE",
+        "Enter": "RETURN",
+        "Backspace": "BACKSPACE",
+        "Delete": "DEL",
+        "Tab": "TAB",
+        "Escape": "ESCAPE",
         " ": "SPACE",
-        ArrowUp: "UP",
-        ArrowDown: "DOWN",
-        ArrowLeft: "LEFT",
-        ArrowRight: "RIGHT",
-        PageUp: "PAGEUP",
-        PageDown: "PAGEDOWN",
-        Home: "HOMEKEY",
-        End: "ENDKEY",
-        CapsLock: "CAPSLOCK",
-        F1: "F1",
-        F2: "F2",
-        F3: "F3",
-        F4: "F4",
-        F5: "F5",
-        F6: "F6",
-        F7: "F7",
-        F8: "F8",
-        F9: "F9",
-        F10: "F10",
-        F11: "F11",
-        F12: "F12",
+        "ArrowUp": "UP",
+        "ArrowDown": "DOWN",
+        "ArrowLeft": "LEFT",
+        "ArrowRight": "RIGHT",
+        "PageUp": "PAGEUP",
+        "PageDown": "PAGEDOWN",
+        "Home": "HOMEKEY",
+        "End": "ENDKEY",
+        "CapsLock": "CAPSLOCK",
       };
 
       if (keyMap[key]) {
         iphoneKey = keyMap[key];
       } else if (key.length === 1) {
-        // Single printable char → use text input path
         e.preventDefault();
         wsSend({ mode: "text", text: key });
         return;
@@ -1019,7 +905,6 @@
       }
     }
 
-    // R → Rotate (when not in textarea)
     if (
       key === "r" &&
       !ctrl &&
@@ -1054,23 +939,19 @@
     apiGet("/api/status", function (err, data) {
       if (!err && data && data.ok) {
         updateConnectionStatus(true);
-        // Store logical point dimensions from API (what touch.tap uses)
         state.pointsW = data.screenWidth || state.imgW || 0;
         state.pointsH = data.screenHeight || state.imgH || 0;
-        // Keep backward compat
         state.screenW = state.pointsW;
         state.screenH = state.pointsH;
 
-        // Update settings info
         $("info-daemon").textContent = data.daemon || "—";
         $("info-version").textContent = data.version || "—";
         $("info-pid").textContent = data.pid || "—";
         $("info-screen").textContent =
-          (data.screenWidth || "?") + " × " + (data.screenHeight || "?");
+          (data.screenWidth || "?") + " x " + (data.screenHeight || "?");
         $("info-sender").textContent = data.senderID || "—";
         $("drawer-version").textContent = "v" + (data.version || "0.5.0");
 
-        // Hide loading on first successful status
         hideLoadingOverlay();
       } else {
         updateConnectionStatus(false);
@@ -1078,7 +959,6 @@
     });
   }
 
-  // Poll status every 10s
   fetchStatus();
   setInterval(fetchStatus, 10000);
 
@@ -1096,7 +976,6 @@
 
   switchTab("screen");
 
-  // Handle window resize
   var resizeTimer;
   window.addEventListener("resize", function () {
     clearTimeout(resizeTimer);

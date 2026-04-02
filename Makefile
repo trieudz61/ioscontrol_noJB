@@ -34,6 +34,7 @@ after-stage::
 		-fobjc-arc -framework Foundation -framework IOKit \
 		-framework CoreGraphics -framework ImageIO -framework IOSurface \
 		-framework UIKit -framework QuartzCore -framework Vision \
+		-framework UserNotifications \
 		-Wno-deprecated-declarations -Wno-arc-performSelector-leaks \
 		-Ilua -DLUA_USE_IOS \
 		IOSControlDaemon.m ICHTTPServer.m ICScreenCapture.m ICLuaEngine.m ICVision.m \

@@ -13,37 +13,23 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <UserNotifications/UserNotifications.h>
 
-// Path for daemon → app IPC (pasteboard text)
+// ─── Constants ───────────────────────────────────────────────────────────
 #define kICPasteTextFile @"/tmp/ioscontrol_paste_text.txt"
 #define kICNotifSetPasteboard CFSTR("com.ioscontrol.setPasteboard")
-
-// Path for daemon → app IPC (toast notification)
 #define kICToastTextFile @"/tmp/ioscontrol_toast_text.txt"
 #define kICNotifShowToast CFSTR("com.ioscontrol.showToast")
 
-@interface AppDelegate () <UNUserNotificationCenterDelegate>
+@interface AppDelegate ()
 @property(nonatomic, strong) NSTimer *daemonWatchdog;
 @property(nonatomic, assign) NSInteger watchdogMissCount;
 @property(nonatomic, assign) BOOL isRespawning;
-@property(nonatomic, assign) BOOL watchdogPaused; // pause during manual restart
+@property(nonatomic, assign) BOOL watchdogPaused;
 @end
 
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-
-  // ── Request Notification Permission for Toasts ──
-  UNUserNotificationCenter *center =
-      [UNUserNotificationCenter currentNotificationCenter];
-  center.delegate = self;
-  [center
-      requestAuthorizationWithOptions:(UNAuthorizationOptionAlert)
-                    completionHandler:^(BOOL granted,
-                                        NSError *_Nullable error) {
-                      if (granted)
-                        NSLog(@"🔔 Notification permission granted for Toasts");
-                    }];
 
   // ── Force Dark Mode ──
   self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
@@ -140,6 +126,21 @@
     });
   }];
 
+  // ── ICToastService is spawned by daemon watchdog (not by UIApp) ──
+  // Daemon starts ICToastService after setsid(), watchdog keeps it alive
+
+  // ── Request notification permission (for daemon → UNUserNotification toast)
+  // ── Daemon posts local notifications so toast works even when app is killed
+  [[UNUserNotificationCenter currentNotificationCenter]
+      requestAuthorizationWithOptions:(UNAuthorizationOptionAlert |
+                                       UNAuthorizationOptionSound |
+                                       UNAuthorizationOptionBadge)
+                    completionHandler:^(BOOL granted, NSError *error) {
+                      NSLog(@"🔔 Notification permission: %@",
+                            granted ? @"granted" : @"denied");
+                    }];
+  [UNUserNotificationCenter currentNotificationCenter].delegate = self;
+
   // ── IPC Listeners ──
   [self registerIPCListeners];
 
@@ -147,28 +148,16 @@
 }
 
 // ═══════════════════════════════════════════
-// UNUserNotificationCenter Delegate (Show banner even if active)
-// ═══════════════════════════════════════════
-- (void)userNotificationCenter:(UNUserNotificationCenter *)center
-       willPresentNotification:(UNNotification *)notification
-         withCompletionHandler:
-             (void (^)(UNNotificationPresentationOptions options))
-                 completionHandler {
-  if (@available(iOS 14.0, *)) {
-    completionHandler(UNNotificationPresentationOptionBanner);
-  } else {
-    completionHandler(UNNotificationPresentationOptionAlert);
-  }
-}
-
-// ═══════════════════════════════════════════
 // IPC — daemon → main app
 // ═══════════════════════════════════════════
 
+// ─── Darwin notification callbacks ────────────────────────────────────────
+
+// IPC: pasteboard (daemon → app)
 static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
                                   CFNotificationName n, const void *obj,
                                   CFDictionaryRef info) {
-  NSString *path = kICPasteTextFile;
+  NSString *path = @"/tmp/ioscontrol_paste_text.txt";
   NSError *err;
   NSString *text = [NSString stringWithContentsOfFile:path
                                              encoding:NSUTF8StringEncoding
@@ -184,101 +173,57 @@ static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
   });
 }
 
+// IPC: toast (daemon → app) — reads file and shows UNNotification banner
 static void ic_toastCallback(CFNotificationCenterRef c, void *o,
                              CFNotificationName n, const void *obj,
                              CFDictionaryRef info) {
-  NSString *path = kICToastTextFile;
-  NSError *err;
-  NSString *text = [NSString stringWithContentsOfFile:path
+  NSString *text = [NSString stringWithContentsOfFile:kICToastTextFile
                                              encoding:NSUTF8StringEncoding
-                                                error:&err];
-  if (!text || err) {
-    NSLog(@"🍞 IPC: failed to read toast text: %@", err);
+                                                error:nil];
+  if (!text || text.length == 0) {
+    NSLog(@"🍞 IPC: toast text file empty");
     return;
   }
 
-  NSString *toastText = [text copy];
-  [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+  UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+  content.title = @"IOSControl";
+  content.body = text;
+  content.sound = [UNNotificationSound defaultSound];
 
-  // Must run on main thread for UIKit
-  dispatch_async(dispatch_get_main_queue(), ^{
-    // ── Create a UIWindow at level 20000099.9 (same as XXTouch) ──
-    UIWindow *toastWindow = [[UIWindow alloc] init];
-    toastWindow.windowLevel = 20000099.9;
-    toastWindow.backgroundColor = [UIColor clearColor];
-    toastWindow.userInteractionEnabled = NO;
-    toastWindow.hidden = NO;
+  UNTimeIntervalNotificationTrigger *trigger =
+      [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.01 repeats:NO];
 
-    CGFloat screenW = [UIScreen mainScreen].bounds.size.width;
-    CGFloat screenH = [UIScreen mainScreen].bounds.size.height;
+  NSString *identifier = [NSString stringWithFormat:@"ictoast-%f",
+                           [[NSDate date] timeIntervalSince1970]];
+  UNNotificationRequest *request =
+      [UNNotificationRequest requestWithIdentifier:identifier
+                                           content:content
+                                           trigger:trigger];
 
-    // ── Pill-shaped toast label at bottom ──
-    CGFloat maxW = screenW - 60;
-    UILabel *label = [[UILabel alloc] init];
-    label.text = toastText;
-    label.textColor = [UIColor whiteColor];
-    label.font = [UIFont systemFontOfSize:14 weight:UIFontWeightMedium];
-    label.numberOfLines = 3;
-    label.textAlignment = NSTextAlignmentCenter;
-    label.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.92];
-    label.layer.cornerRadius = 12;
-    label.layer.masksToBounds = YES;
-    label.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.15].CGColor;
-    label.layer.borderWidth = 0.5;
-
-    // Size to fit
-    CGSize sz = [label sizeThatFits:CGSizeMake(maxW - 32, 200)];
-    sz.width = MIN(sz.width + 32, maxW);
-    sz.height = MAX(sz.height + 16, 36);
-
-    CGFloat x = (screenW - sz.width) / 2.0;
-    CGFloat y = screenH - sz.height - 100; // bottom area, above home indicator
-    label.frame = CGRectMake(0, 0, sz.width, sz.height);
-
-    // Position the window itself
-    toastWindow.frame = CGRectMake(x, y, sz.width, sz.height);
-
-    [toastWindow addSubview:label];
-
-    // ── Animate in ──
-    toastWindow.alpha = 0.0;
-    [UIView animateWithDuration:0.25
-        animations:^{
-          toastWindow.alpha = 1.0;
-        }
-        completion:^(BOOL done) {
-          // ── Auto-dismiss after 2s ──
-          dispatch_after(
-              dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
-              dispatch_get_main_queue(), ^{
-                [UIView animateWithDuration:0.3
-                    animations:^{
-                      toastWindow.alpha = 0.0;
-                    }
-                    completion:^(BOOL d) {
-                      toastWindow.hidden = YES;
-                      // toastWindow deallocates here (captured by block)
-                      (void)toastWindow;
-                    }];
-              });
-        }];
-  });
+  [[UNUserNotificationCenter currentNotificationCenter]
+      addNotificationRequest:request
+       withCompletionHandler:^(NSError *err) {
+    if (err)
+      NSLog(@"🍞 IPC: UNNotification error: %@", err);
+    else
+      NSLog(@"🍞 IPC: toast shown via UNNotification: %@", text);
+  }];
 }
 
 - (void)registerIPCListeners {
-  // Pasteboard
-  CFNotificationCenterAddObserver(
-      CFNotificationCenterGetDarwinNotifyCenter(), (__bridge void *)self,
-      ic_pasteboardCallback, kICNotifSetPasteboard, NULL,
-      CFNotificationSuspensionBehaviorDeliverImmediately);
+  CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
 
-  // Toast
   CFNotificationCenterAddObserver(
-      CFNotificationCenterGetDarwinNotifyCenter(), (__bridge void *)self,
-      ic_toastCallback, kICNotifShowToast, NULL,
+      darwin, (__bridge void *)self, ic_pasteboardCallback,
+      kICNotifSetPasteboard, NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
+  NSLog(@"📡 IPC: Pasteboard listener registered");
 
-  NSLog(@"📡 IPC listeners registered (Pasteboard, Toast)");
+  CFNotificationCenterAddObserver(
+      darwin, (__bridge void *)self, ic_toastCallback,
+      kICNotifShowToast, NULL,
+      CFNotificationSuspensionBehaviorDeliverImmediately);
+  NSLog(@"📡 IPC: Toast listener registered");
 }
 
 // ═══════════════════════════════════════════
@@ -373,6 +318,23 @@ static void ic_toastCallback(CFNotificationCenterRef c, void *o,
 - (void)applicationDidEnterBackground:(UIApplication *)application {
   // Keep watchdog running in background (app has voip/audio background modes)
   NSLog(@"📱 App backgrounded — watchdog continues");
+}
+
+// ── UNUserNotificationCenterDelegate ──
+// Show notification banner even when app is in foreground
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:
+             (void (^)(UNNotificationPresentationOptions))completionHandler {
+  completionHandler(UNNotificationPresentationOptionBanner |
+                    UNNotificationPresentationOptionSound);
+}
+
+// Dismiss notification when user taps it
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+    didReceiveNotificationResponse:(UNNotificationResponse *)response
+             withCompletionHandler:(void (^)(void))completionHandler {
+  completionHandler();
 }
 
 @end

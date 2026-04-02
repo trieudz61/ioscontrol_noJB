@@ -3,10 +3,13 @@
 // All zero-dependency: NSJSONSerialization, NSRegularExpression, NSURLSession
 
 #import "ICLuaStdlib.h"
+#import <CoreFoundation/CoreFoundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
 #import <objc/message.h>
+#import <dlfcn.h>
+#import <unistd.h>
 
 #include "lua/lauxlib.h"
 #include "lua/lua.h"
@@ -17,6 +20,45 @@ extern void ic_pressKey(const char *name);
 extern void ic_holdKey(const char *name);
 extern void ic_releaseKey(const char *name);
 extern BOOL ic_keyInputText(NSString *text);
+
+// ═══════════════════════════════════════════════════════════════════════
+// File + Darwin Notification IPC (reliable, no socket needed)
+// daemon → write /tmp/ictoast_payload.json → Darwin notify
+// ICToastService → reads file → shows toast
+// ═══════════════════════════════════════════════════════════════════════
+
+static NSString *const kToastPayloadFile = @"/tmp/ictoast_payload.json";
+static CFStringRef kToastNotifyName = CFSTR("com.ioscontrol.toast.show");
+
+static void toastFileNotifySend(NSString *text, double duration) {
+    NSDictionary *payload = @{
+        @"text": text ?: @"",
+        @"duration": @(duration > 0 ? duration : 2.0)
+    };
+    NSError *err;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:payload
+                                                       options:0
+                                                         error:&err];
+    if (!jsonData) {
+        logMsg("❌ [toast] JSON encode failed");
+        return;
+    }
+
+    BOOL ok = [jsonData writeToFile:kToastPayloadFile atomically:YES];
+    if (!ok) {
+        logMsg("❌ [toast] write file failed");
+        return;
+    }
+
+    CFNotificationCenterPostNotification(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        kToastNotifyName,
+        NULL,
+        NULL,
+        true);
+
+    logMsg("✅ [toast] sent: %@", text);
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Helpers
@@ -45,7 +87,6 @@ static void pushNSObject(lua_State *L, id obj) {
   if (!obj || obj == [NSNull null]) {
     lua_pushnil(L);
   } else if ([obj isKindOfClass:[NSNumber class]]) {
-    // bool vs number
     if (strcmp([obj objCType], @encode(BOOL)) == 0 ||
         strcmp([obj objCType], @encode(bool)) == 0) {
       lua_pushboolean(L, [(NSNumber *)obj boolValue]);
@@ -67,15 +108,13 @@ static void pushNSObject(lua_State *L, id obj) {
   }
 }
 
-// Convert Lua table at index to NSObject (recursive)
 static id luaToNSObject(lua_State *L, int idx);
-
 static NSDictionary *luaTableToDict(lua_State *L, int idx) {
   NSMutableDictionary *d = [NSMutableDictionary dictionary];
   lua_pushnil(L);
   while (lua_next(L, idx) != 0) {
     NSString *k = [NSString stringWithUTF8String:luaL_tolstring(L, -2, NULL)];
-    lua_pop(L, 1); // pop tostring result
+    lua_pop(L, 1);
     id v = luaToNSObject(L, lua_gettop(L));
     if (k && v)
       d[k] = v;
@@ -110,7 +149,6 @@ static id luaToNSObject(lua_State *L, int idx) {
   case LUA_TSTRING:
     return [NSString stringWithUTF8String:lua_tostring(L, idx)];
   case LUA_TTABLE: {
-    // Detect array vs dict: if key 1 exists, assume array
     lua_rawgeti(L, idx, 1);
     BOOL isArr = !lua_isnil(L, -1);
     lua_pop(L, 1);
@@ -125,7 +163,6 @@ static id luaToNSObject(lua_State *L, int idx) {
 // 10a-1: json module
 // ═══════════════════════════════════════════════════════════════════════
 
-// json.encode(table) → string
 static int lua_json_encode(lua_State *L) {
   luaL_checkany(L, 1);
   id obj = luaToNSObject(L, 1);
@@ -150,7 +187,6 @@ static int lua_json_encode(lua_State *L) {
   return 1;
 }
 
-// json.decode(str) → table/value
 static int lua_json_decode(lua_State *L) {
   const char *s = luaL_checkstring(L, 1);
   NSData *data = [NSData dataWithBytes:s length:strlen(s)];
@@ -175,7 +211,6 @@ static const luaL_Reg kJsonLib[] = {
 // 10a-2: base64 module
 // ═══════════════════════════════════════════════════════════════════════
 
-// base64.encode(str) → string
 static int lua_b64_encode(lua_State *L) {
   size_t len;
   const char *s = luaL_checklstring(L, 1, &len);
@@ -185,7 +220,6 @@ static int lua_b64_encode(lua_State *L) {
   return 1;
 }
 
-// base64.decode(str) → string (raw bytes)
 static int lua_b64_decode(lua_State *L) {
   const char *s = luaL_checkstring(L, 1);
   NSData *data = [[NSData alloc]
@@ -206,7 +240,6 @@ static const luaL_Reg kBase64Lib[] = {
 // 10a-3: re (regex) module
 // ═══════════════════════════════════════════════════════════════════════
 
-// re.match(str, pattern) → match_str or nil
 static int lua_re_match(lua_State *L) {
   const char *str = luaL_checkstring(L, 1);
   const char *pat = luaL_checkstring(L, 2);
@@ -232,7 +265,6 @@ static int lua_re_match(lua_State *L) {
   return 1;
 }
 
-// re.gmatch(str, pattern) → table of matches
 static int lua_re_gmatch(lua_State *L) {
   const char *str = luaL_checkstring(L, 1);
   const char *pat = luaL_checkstring(L, 2);
@@ -254,7 +286,6 @@ static int lua_re_gmatch(lua_State *L) {
   return 1;
 }
 
-// re.gsub(str, pattern, replacement) → new string
 static int lua_re_gsub(lua_State *L) {
   const char *str = luaL_checkstring(L, 1);
   const char *pat = luaL_checkstring(L, 2);
@@ -278,7 +309,6 @@ static int lua_re_gsub(lua_State *L) {
   return 1;
 }
 
-// re.test(str, pattern) → bool
 static int lua_re_test(lua_State *L) {
   const char *str = luaL_checkstring(L, 1);
   const char *pat = luaL_checkstring(L, 2);
@@ -306,7 +336,6 @@ static const luaL_Reg kReLib[] = {{"match", lua_re_match},
 // 10c: http module (synchronous via semaphore — Lua runs on bg queue)
 // ═══════════════════════════════════════════════════════════════════════
 
-// http.get(url [, headers_table]) → {status, body, headers} or nil, err
 static int lua_http_get(lua_State *L) {
   const char *u = luaL_checkstring(L, 1);
   NSURL *url = [NSURL URLWithString:[NSString stringWithUTF8String:u]];
@@ -319,7 +348,6 @@ static int lua_http_get(lua_State *L) {
        requestWithURL:url
           cachePolicy:NSURLRequestReloadIgnoringLocalCacheData
       timeoutInterval:30.0];
-  // Optional headers table at arg 2
   if (lua_istable(L, 2)) {
     lua_pushnil(L);
     while (lua_next(L, 2)) {
@@ -352,7 +380,6 @@ static int lua_http_get(lua_State *L) {
     lua_pushstring(L, resErr.localizedDescription.UTF8String ?: "http error");
     return 2;
   }
-  // Return table: {status, body, headers}
   lua_newtable(L);
   lua_pushinteger(L, resHttp.statusCode);
   lua_setfield(L, -2, "status");
@@ -362,7 +389,6 @@ static int lua_http_get(lua_State *L) {
     lua_pushstring(L, "");
   }
   lua_setfield(L, -2, "body");
-  // headers
   lua_newtable(L);
   [resHttp.allHeaderFields
       enumerateKeysAndObjectsUsingBlock:^(NSString *k, NSString *v, BOOL *s) {
@@ -373,8 +399,6 @@ static int lua_http_get(lua_State *L) {
   return 1;
 }
 
-// http.post(url, body [, content_type [, headers]]) → {status, body} or nil,
-// err
 static int lua_http_post(lua_State *L) {
   const char *u = luaL_checkstring(L, 1);
   size_t bodyLen;
@@ -397,7 +421,6 @@ static int lua_http_post(lua_State *L) {
   [req setValue:[NSString stringWithUTF8String:ct]
       forHTTPHeaderField:@"Content-Type"];
 
-  // Optional extra headers at arg 4
   if (lua_istable(L, 4)) {
     lua_pushnil(L);
     while (lua_next(L, 4)) {
@@ -445,11 +468,9 @@ static const luaL_Reg kHttpLib[] = {
     {"get", lua_http_get}, {"post", lua_http_post}, {NULL, NULL}};
 
 // ═══════════════════════════════════════════════════════════════════════
-// 10b: sys.alert / sys.toast (extended sys table additions)
-// These are added to existing sys table so we use different register fn
+// 10b: sys.alert / sys.toast
 // ═══════════════════════════════════════════════════════════════════════
 
-// sys.alert(msg [, title]) — modal alert via runtime
 static int lua_sys_alert(lua_State *L) {
   const char *msg = luaL_checkstring(L, 1);
   const char *title = luaL_optstring(L, 2, "IOSControl");
@@ -457,14 +478,11 @@ static int lua_sys_alert(lua_State *L) {
   NSString *titleStr = [NSString stringWithUTF8String:title];
   dispatch_semaphore_t sem = dispatch_semaphore_create(0);
   dispatch_async(dispatch_get_main_queue(), ^{
-    // UIAlertController via runtime
     Class alertCls = NSClassFromString(@"UIAlertController");
     if (!alertCls) {
       dispatch_semaphore_signal(sem);
       return;
     }
-
-    // +alertControllerWithTitle:message:preferredStyle:  (NSInteger style=0)
     id (*create)(Class, SEL, NSString *, NSString *, NSInteger) =
         (id(*)(Class, SEL, NSString *, NSString *, NSInteger))objc_msgSend;
     id alert = create(alertCls,
@@ -472,7 +490,6 @@ static int lua_sys_alert(lua_State *L) {
                           @"alertControllerWithTitle:message:preferredStyle:"),
                       titleStr, msgStr, 0);
 
-    // UIAlertAction +actionWithTitle:style:handler:
     Class actionCls = NSClassFromString(@"UIAlertAction");
     id (*mkAction)(Class, SEL, NSString *, NSInteger, void (^)(id)) =
         (id(*)(Class, SEL, NSString *, NSInteger, void (^)(id)))objc_msgSend;
@@ -482,11 +499,9 @@ static int lua_sys_alert(lua_State *L) {
           dispatch_semaphore_signal(sem);
         });
 
-    // [alert addAction:okAction]
     void (*addAct)(id, SEL, id) = (void (*)(id, SEL, id))objc_msgSend;
     addAct(alert, NSSelectorFromString(@"addAction:"), okAction);
 
-    // Present
     id app = [NSClassFromString(@"UIApplication")
         performSelector:NSSelectorFromString(@"sharedApplication")];
     id window = [app performSelector:NSSelectorFromString(@"keyWindow")];
@@ -508,45 +523,16 @@ static int lua_sys_alert(lua_State *L) {
   return 0;
 }
 
-// sys.toast(msg) — daemon writes IPC file + posts Darwin notification
-// ICToastService (hidden UIApp with display entitlements) shows UIWindow
-// overlay
+// sys.toast(msg [, duration]) — Unix Domain Socket IPC → ICToastService
+// ICToastService displays a gray pill panel at bottom of screen (XXTouch style)
 static int lua_sys_toast(lua_State *L) {
   const char *msg = luaL_checkstring(L, 1);
-  NSString *msgStr = [NSString stringWithUTF8String:msg];
+  double duration = luaL_optnumber(L, 2, 2.0);
 
   logMsg("🍞 [toast] %s", msg);
 
-  // Write to temp file for IPC
-  [msgStr writeToFile:@"/tmp/ioscontrol_toast_text.txt"
-           atomically:YES
-             encoding:NSUTF8StringEncoding
-                error:nil];
-
-  // Signal ICToastService + main app
-  CFNotificationCenterPostNotification(
-      CFNotificationCenterGetDarwinNotifyCenter(),
-      CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
-
-  // Debug: dump ICToastService spawn + runtime logs
-  NSString *spawnLog =
-      [NSString stringWithContentsOfFile:@"/tmp/ictoast_spawn.txt"
-                                encoding:NSUTF8StringEncoding
-                                   error:nil];
-  if (spawnLog.length > 0) {
-    logMsg("🔍 [spawn] %s", spawnLog.UTF8String);
-  } else {
-    logMsg("⚠️ [spawn] no /tmp/ictoast_spawn.txt — spawnToastService may not "
-           "have been called");
-  }
-  NSString *svcLog = [NSString stringWithContentsOfFile:@"/tmp/ictoast_log.txt"
-                                               encoding:NSUTF8StringEncoding
-                                                  error:nil];
-  if (svcLog.length > 0) {
-    logMsg("🔍 [ICToastService] %s", svcLog.UTF8String);
-  } else {
-    logMsg("⚠️ [ICToastService] no /tmp/ictoast_log.txt — binary never started");
-  }
+  NSString *msgStr = [NSString stringWithUTF8String:msg];
+  toastFileNotifySend(msgStr, duration);
 
   return 0;
 }
@@ -573,7 +559,6 @@ static int lua_sys_date(lua_State *L) {
   const char *fmt = luaL_optstring(L, 1, "%Y-%m-%d %H:%M:%S");
   NSDateFormatter *df = [NSDateFormatter new];
   NSString *fmtStr = [NSString stringWithUTF8String:fmt];
-  // Convert strftime-ish to NSDateFormatter tokens (basic)
   fmtStr = [fmtStr stringByReplacingOccurrencesOfString:@"%Y"
                                              withString:@"yyyy"];
   fmtStr = [fmtStr stringByReplacingOccurrencesOfString:@"%m" withString:@"MM"];
@@ -585,14 +570,6 @@ static int lua_sys_date(lua_State *L) {
   lua_pushstring(L, [df stringFromDate:[NSDate date]].UTF8String);
   return 1;
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-// 10d: timer module (simple one-shot + repeating)
-// ═══════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════
-// 10e: sys.home / sys.lock + key module
-// ═══════════════════════════════════════════════════════════════════════
 
 // sys.home() — press Home button
 static int lua_sys_home(lua_State *L) {
@@ -606,18 +583,15 @@ static int lua_sys_lock(lua_State *L) {
   return 0;
 }
 
-// key.input_text(str) — type a string character by character
+// key.input_text(str) — type a string
 static int lua_key_input_text(lua_State *L) {
   const char *s = luaL_checkstring(L, 1);
   NSString *str = [NSString stringWithUTF8String:s];
-  // ic_keyInputText handles its own threading internally
   ic_keyInputText(str);
   return 0;
 }
 
 // key.press(name) — press and release a named key
-// Names: HOMEBUTTON, LOCK, VOLUMEUP, VOLUMEDOWN, MUTE,
-//        RETURN, BACKSPACE, SPACE, ESCAPE, SCREENSAVE, SPOTLIGHT
 static int lua_key_press(lua_State *L) {
   const char *name = luaL_checkstring(L, 1);
   ic_pressKey(name);
@@ -644,7 +618,7 @@ static const luaL_Reg kKeyLib[] = {{"press", lua_key_press},
                                    {"input_text", lua_key_input_text},
                                    {NULL, NULL}};
 
-// timer.sleep(ms) — alias for sys.msleep compatible
+// timer.sleep(ms)
 static int lua_timer_sleep(lua_State *L) {
   double ms = luaL_checknumber(L, 1);
   usleep((useconds_t)(ms * 1000));
@@ -662,6 +636,106 @@ static int lua_timer_now(lua_State *L) {
 
 static const luaL_Reg kTimerLib[] = {
     {"sleep", lua_timer_sleep}, {"now", lua_timer_now}, {NULL, NULL}};
+
+// ═══════════════════════════════════════════════════════════════════════
+// 10d: file module
+// file.read(path) → string or nil, error
+// file.write(path, content) → true or nil, error
+// file.append(path, content) → true or nil, error
+// file.clear(path) → true or nil, error
+// ═══════════════════════════════════════════════════════════════════════
+
+static int lua_file_read(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSError *err = nil;
+  NSString *content = [NSString stringWithContentsOfFile:pathStr
+                                                encoding:NSUTF8StringEncoding
+                                                   error:&err];
+  if (err || !content) {
+    lua_pushnil(L);
+    lua_pushstring(L, err ? err.localizedDescription.UTF8String : "file.read error");
+    return 2;
+  }
+  lua_pushstring(L, content.UTF8String);
+  return 1;
+}
+
+static int lua_file_write(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  const char *content = luaL_checkstring(L, 2);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSString *contentStr = [NSString stringWithUTF8String:content];
+  NSError *err = nil;
+  BOOL ok = [contentStr writeToFile:pathStr
+                          atomically:YES
+                            encoding:NSUTF8StringEncoding
+                               error:&err];
+  if (!ok) {
+    lua_pushnil(L);
+    lua_pushstring(L, err ? err.localizedDescription.UTF8String : "file.write error");
+    return 2;
+  }
+  lua_pushboolean(L, YES);
+  return 1;
+}
+
+static int lua_file_append(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  const char *content = luaL_checkstring(L, 2);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSString *contentStr = [NSString stringWithUTF8String:content];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSError *err = nil;
+
+  if (![fm fileExistsAtPath:pathStr]) {
+    [fm createFileAtPath:pathStr contents:nil attributes:nil];
+  }
+
+  NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:pathStr];
+  if (!fh) {
+    lua_pushnil(L);
+    lua_pushstring(L, "cannot open file for writing");
+    return 2;
+  }
+
+  [fh seekToEndOfFile];
+  NSData *data = [contentStr dataUsingEncoding:NSUTF8StringEncoding];
+  [fh writeData:data];
+  [fh synchronizeFile];
+  [fh closeFile];
+
+  lua_pushboolean(L, YES);
+  return 1;
+}
+
+static int lua_file_clear(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSFileManager *fm = [NSFileManager defaultManager];
+  NSError *err = nil;
+
+  if ([fm fileExistsAtPath:pathStr]) {
+    BOOL ok = [fm removeItemAtPath:pathStr error:&err];
+    if (!ok) {
+      lua_pushnil(L);
+      lua_pushstring(L, err ? err.localizedDescription.UTF8String : "file.clear error");
+      return 2;
+    }
+  }
+
+  [fm createFileAtPath:pathStr contents:nil attributes:nil];
+  lua_pushboolean(L, YES);
+  return 1;
+}
+
+static const luaL_Reg kFileLib[] = {
+    {"read", lua_file_read},
+    {"write", lua_file_write},
+    {"append", lua_file_append},
+    {"clear", lua_file_clear},
+    {NULL, NULL}
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // Public: register all stdlib modules
@@ -693,7 +767,12 @@ void ic_luaStdlibRegister(lua_State *L) {
   luaL_setfuncs(L, kTimerLib, 0);
   lua_setglobal(L, "timer");
 
-  // Extend existing sys table with alert/toast/getenv/time/date/home/lock
+  // file table
+  lua_newtable(L);
+  luaL_setfuncs(L, kFileLib, 0);
+  lua_setglobal(L, "file");
+
+  // Extend sys table with alert/toast/getenv/time/date/home/lock
   lua_getglobal(L, "sys");
   if (lua_istable(L, -1)) {
     lua_pushcfunction(L, lua_sys_alert);
@@ -713,7 +792,7 @@ void ic_luaStdlibRegister(lua_State *L) {
   }
   lua_pop(L, 1);
 
-  // key table: key.press / key.down / key.up
+  // key table
   lua_newtable(L);
   luaL_setfuncs(L, kKeyLib, 0);
   lua_setglobal(L, "key");

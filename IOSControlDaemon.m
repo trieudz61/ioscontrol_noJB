@@ -12,8 +12,13 @@
 #import <math.h>
 #import <objc/runtime.h>
 #import <signal.h>
+#import <spawn.h>
+#import <string.h>
 #import <sys/resource.h> // setpriority
+#import <sys/stat.h>
 #import <unistd.h>
+
+extern char **environ;
 
 // XNU memorystatus API to prevent Jetsam kills
 extern int memorystatus_control(uint32_t command, int32_t pid, uint32_t flags,
@@ -743,6 +748,92 @@ static void appUninstalledNotification(CFNotificationCenterRef center,
 // Main — Daemon Entry Point
 // ═══════════════════════════════════════════
 
+// ── Spawn ICToastService (persistent hidden UIApp for toast overlay) ──
+// XXTouch watchdog pattern: keep-alive + respawn on crash
+static pid_t gToastPID = 0;
+static dispatch_source_t gToastWatchdogTimer = NULL;
+static char gToastSvcPath[1024] = {0};
+
+static void respawnICToastService(void) {
+  // Kill existing (in case zombie)
+  if (gToastPID > 0) {
+    pid_t kp;
+    const char *ka[] = {"/bin/kill", "-9", NULL, NULL};
+    char pidStr[32];
+    snprintf(pidStr, sizeof(pidStr), "%d", gToastPID);
+    ka[2] = pidStr;
+    posix_spawn(&kp, "/bin/kill", NULL, NULL, (char **)ka, environ);
+    waitpid(kp, NULL, 0);
+    gToastPID = 0;
+  }
+
+  if (!gToastSvcPath[0]) {
+    logMsg("❌ respawnICToastService: svc path unknown");
+    return;
+  }
+
+  // Spawn WITHOUT setpgid(0,0) — same process group as daemon
+  // This allows killall to work and keeps us in same session
+  posix_spawnattr_t attr;
+  posix_spawnattr_init(&attr);
+  // NO POSIX_SPAWN_SETPGROUP — keep our process group
+
+  const char *argv[] = {gToastSvcPath, NULL};
+  int result = posix_spawn(&gToastPID, gToastSvcPath, NULL, &attr,
+                           (char **)argv, environ);
+  posix_spawnattr_destroy(&attr);
+
+  if (result == 0) {
+    logMsg("🍞 ICToastService spawned (PID=%d)", gToastPID);
+  } else {
+    logMsg("❌ ICToastService spawn failed: %d (%s)", result, strerror(result));
+    gToastPID = 0;
+  }
+}
+
+static void startICToastWatchdog(void) {
+  // Find service path once
+  char execPath[1024];
+  uint32_t sz = sizeof(execPath);
+  if (_NSGetExecutablePath(execPath, &sz) == 0) {
+    NSString *daemonPath = [NSString stringWithUTF8String:execPath];
+    NSString *appBundleDir = [daemonPath stringByDeletingLastPathComponent];
+    NSString *svcPath =
+        [appBundleDir stringByAppendingPathComponent:@"ICToastService.app/ICToastService"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:svcPath]) {
+      strncpy(gToastSvcPath, [svcPath UTF8String], sizeof(gToastSvcPath) - 1);
+      logMsg("🍞 toast service path: %s", gToastSvcPath);
+    } else {
+      logMsg("❌ ICToastService not found at %@", svcPath);
+    }
+  }
+
+  // Spawn immediately
+  respawnICToastService();
+
+  // Watchdog timer: check every 3 seconds, respawn if dead
+  gToastWatchdogTimer = dispatch_source_create(
+      DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+  dispatch_source_set_timer(gToastWatchdogTimer,
+                             dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC),
+                             3 * NSEC_PER_SEC, 1 * NSEC_PER_SEC);
+  dispatch_source_set_event_handler(gToastWatchdogTimer, ^{
+    if (gToastPID > 0) {
+      // Check if process still alive
+      if (kill(gToastPID, 0) != 0) {
+        logMsg("🍞 watchdog: ICToastService (PID=%d) dead, respawning...", gToastPID);
+        gToastPID = 0;
+        respawnICToastService();
+      }
+    } else {
+      // Not started yet, try again
+      respawnICToastService();
+    }
+  });
+  dispatch_resume(gToastWatchdogTimer);
+  logMsg("🍞 ICToastService watchdog started");
+}
+
 int main(int argc, char *argv[]) {
   @autoreleasepool {
     // ── Init serial HID dispatch queue FIRST (before any touch API) ──
@@ -794,6 +885,9 @@ int main(int argc, char *argv[]) {
       gScreenH = atof(argv[2]);
     }
     logMsg("📱 Screen: %.0f × %.0f", gScreenW, gScreenH);
+
+    // ── Watchdog: spawn + keep ICToastService alive ──
+    startICToastWatchdog();
 
     // ── Load HID symbols ──
     loadHIDSymbols();
