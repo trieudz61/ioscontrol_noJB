@@ -12,8 +12,6 @@
 #import <math.h>
 #import <objc/runtime.h>
 #import <signal.h>
-#import <spawn.h>
-#import <string.h>
 #import <sys/resource.h> // setpriority
 #import <unistd.h>
 

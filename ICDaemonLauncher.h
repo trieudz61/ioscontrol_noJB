@@ -18,8 +18,4 @@
 - (void)checkStatusWithCompletion:(void (^)(BOOL alive,
                                             NSString *version))completion;
 
-/// Spawn ICToastService (hidden UIApp for global toast overlay).
-/// Must be called from UIApp context (not from daemon).
-- (void)spawnToastService;
-
 @end
