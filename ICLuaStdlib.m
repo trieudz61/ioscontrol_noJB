@@ -508,35 +508,26 @@ static int lua_sys_alert(lua_State *L) {
   return 0;
 }
 
-// sys.toast(msg) — posts a real iOS system notification (works even when app
-// killed)
+// sys.toast(msg) — daemon writes IPC file + posts Darwin notification
+// The main UIApp receives it and posts the real UNUserNotification
 static int lua_sys_toast(lua_State *L) {
   const char *msg = luaL_checkstring(L, 1);
   NSString *msgStr = [NSString stringWithUTF8String:msg];
 
-  // Always log so it's visible in the Console tab
   logMsg("🍞 [toast] %s", msg);
 
-  // Post real system UNUserNotification (banner like Messenger)
-  UNUserNotificationCenter *center =
-      [UNUserNotificationCenter currentNotificationCenter];
-  UNMutableNotificationContent *content =
-      [[UNMutableNotificationContent alloc] init];
-  content.title = @"IOSControl";
-  content.body = msgStr;
-  content.sound = [UNNotificationSound defaultSound];
+  // Write to temp file for IPC
+  [msgStr writeToFile:@"/tmp/ioscontrol_toast_text.txt"
+           atomically:YES
+             encoding:NSUTF8StringEncoding
+                error:nil];
 
-  UNNotificationRequest *request =
-      [UNNotificationRequest requestWithIdentifier:@"ic.toast"
-                                           content:content
-                                           trigger:nil];
-  [center removeDeliveredNotificationsWithIdentifiers:@[ @"ic.toast" ]];
-  [center addNotificationRequest:request
-           withCompletionHandler:^(NSError *err) {
-             if (err)
-               logMsg("⚠️ [toast] notification error: %s",
-                      err.localizedDescription.UTF8String);
-           }];
+  // Signal the main UIApp — it will post UNUserNotification from its process
+  // (daemon cannot post notifications: "Notifications are not allowed for this
+  // application")
+  CFNotificationCenterPostNotification(
+      CFNotificationCenterGetDarwinNotifyCenter(),
+      CFSTR("com.ioscontrol.showToast"), NULL, NULL, true);
 
   return 0;
 }

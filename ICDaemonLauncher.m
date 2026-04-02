@@ -101,8 +101,8 @@ static const int kDaemonPort = 46952;
   usleep(100000); // 100ms gap
 
   NSString *appPath = [[NSBundle mainBundle] bundlePath];
-  NSString *svcPath =
-      [appPath stringByAppendingPathComponent:@"ICToastService"];
+  NSString *svcPath = [appPath
+      stringByAppendingPathComponent:@"ICToastService.app/ICToastService"];
 
   if (![[NSFileManager defaultManager] fileExistsAtPath:svcPath]) {
     NSLog(@"⚠️ ICToastService binary not found at: %@", svcPath);

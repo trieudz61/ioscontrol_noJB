@@ -43,8 +43,8 @@ relocations:
   - { offset: 0x3214, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s, symObjAddr: 0x1D14, symBinAddr: 0x100005DA4, symSize: 0x44 }
   - { offset: 0x642B, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100005DE8, symSize: 0xB0 }
   - { offset: 0x6438, size: 0x8, addend: 0x0, symName: '+[ICDaemonLauncher shared]', symObjAddr: 0x0, symBinAddr: 0x100005DE8, symSize: 0xB0 }
-  - { offset: 0x6461, size: 0x8, addend: 0x0, symName: _shared.instance, symObjAddr: 0x44E8, symBinAddr: 0x100022FA8, symSize: 0x0 }
-  - { offset: 0x6476, size: 0x8, addend: 0x0, symName: _shared.once, symObjAddr: 0x44F0, symBinAddr: 0x100022FB0, symSize: 0x0 }
+  - { offset: 0x6461, size: 0x8, addend: 0x0, symName: _shared.instance, symObjAddr: 0x44F8, symBinAddr: 0x100022FA8, symSize: 0x0 }
+  - { offset: 0x6476, size: 0x8, addend: 0x0, symName: _shared.once, symObjAddr: 0x4500, symBinAddr: 0x100022FB0, symSize: 0x0 }
   - { offset: 0x6685, size: 0x8, addend: 0x0, symName: '___26+[ICDaemonLauncher shared]_block_invoke', symObjAddr: 0xB0, symBinAddr: 0x100005E98, symSize: 0x4C }
   - { offset: 0x66C2, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher killDaemon]', symObjAddr: 0xFC, symBinAddr: 0x100005EE4, symSize: 0xA4 }
   - { offset: 0x6710, size: 0x8, addend: 0x0, symName: '-[ICDaemonLauncher spawnDaemonWithCompletion:]', symObjAddr: 0x1A0, symBinAddr: 0x100005F88, symSize: 0x110 }
