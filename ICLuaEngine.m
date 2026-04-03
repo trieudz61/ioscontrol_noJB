@@ -546,33 +546,75 @@ static const luaL_Reg kKeyLib[] = {
 // ═══════════════════════════════════════════
 
 // clipboard.read() → string
+// Daemon can't access UIPasteboard directly (no UIApplication context).
+// IPC: write request → main app reads clipboard, writes to temp file → daemon reads.
 static int lua_clipboard_read(lua_State *L) {
-  Class pb = NSClassFromString(@"UIPasteboard");
-  NSString *text = nil;
-  if (pb) {
-    id gen = [pb performSelector:NSSelectorFromString(@"generalPasteboard")];
-    if (gen)
-      text = [gen performSelector:NSSelectorFromString(@"string")];
-  }
-  lua_pushstring(L, text ? text.UTF8String : "");
-  return 1;
+    NSString *reqPath = @"/tmp/ioscontrol_clipboard_req.txt";
+    NSString *resPath = @"/tmp/ioscontrol_clipboard_res.txt";
+
+    // Signal main app to read clipboard and write to result file
+    [@"" writeToFile:reqPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    CFNotificationCenterRef darwin = CFNotificationCenterGetDarwinNotifyCenter();
+    CFNotificationCenterPostNotification(darwin,
+        CFSTR("com.ioscontrol.getPasteboard"), NULL, NULL, TRUE);
+
+    // Poll for response with timeout (max ~2s)
+    NSString *text = nil;
+    for (int i = 0; i < 20; i++) {
+        usleep(100000); // 100ms per poll
+        text = [NSString stringWithContentsOfFile:resPath
+                                        encoding:NSUTF8StringEncoding
+                                           error:nil];
+        if (text || [[NSFileManager defaultManager] fileExistsAtPath:resPath]) {
+            break;
+        }
+    }
+
+    [[NSFileManager defaultManager] removeItemAtPath:resPath error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:reqPath error:nil];
+
+    logMsg("📋 [Lua] clipboard.read() → len=%d", text ? (int)text.length : -1);
+    lua_pushstring(L, text ? text.UTF8String : "");
+    return 1;
 }
 
 // clipboard.write(text)
+// Daemon can't write UIPasteboard directly. IPC via temp file + Darwin notification.
 static int lua_clipboard_write(lua_State *L) {
-  const char *text = luaL_checkstring(L, 1);
-  NSString *str = [NSString stringWithUTF8String:text];
-  Class pb = NSClassFromString(@"UIPasteboard");
-  BOOL ok = NO;
-  if (pb) {
-    id gen = [pb performSelector:NSSelectorFromString(@"generalPasteboard")];
-    if (gen) {
-      [gen performSelector:NSSelectorFromString(@"setString:") withObject:str];
-      ok = YES;
+    const char *text = luaL_checkstring(L, 1);
+    NSString *str = [NSString stringWithUTF8String:text];
+    if (!str.length) {
+        lua_pushboolean(L, NO);
+        return 1;
     }
-  }
-  lua_pushboolean(L, ok);
-  return 1;
+
+    // Save current clipboard first (so we can restore after paste)
+    NSString *bakPath = @"/tmp/ioscontrol_clipboard_bak.txt";
+    NSString *reqPath = @"/tmp/ioscontrol_paste_text.txt";
+
+    // Read current clipboard via IPC first
+    [@"" writeToFile:@"/tmp/ioscontrol_clipboard_req.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+        CFSTR("com.ioscontrol.getPasteboard"), NULL, NULL, TRUE);
+    usleep(150000);
+    NSString *bak = [NSString stringWithContentsOfFile:@"/tmp/ioscontrol_clipboard_res.txt"
+                                              encoding:NSUTF8StringEncoding error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:@"/tmp/ioscontrol_clipboard_req.txt" error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:@"/tmp/ioscontrol_clipboard_res.txt" error:nil];
+    if (bak) {
+        [bak writeToFile:bakPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    }
+
+    // Write new text → IPC → main app sets clipboard
+    BOOL ok = [str writeToFile:reqPath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    if (ok) {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+            CFSTR("com.ioscontrol.setPasteboard"), NULL, NULL, TRUE);
+        usleep(200000); // Wait for clipboard to propagate
+    }
+
+    lua_pushboolean(L, ok);
+    return 1;
 }
 
 static const luaL_Reg kClipboardLib[] = {

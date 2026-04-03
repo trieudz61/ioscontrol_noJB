@@ -15,6 +15,10 @@
 // ─── Constants ───────────────────────────────────────────────────────────
 #define kICPasteTextFile @"/tmp/ioscontrol_paste_text.txt"
 #define kICNotifSetPasteboard CFSTR("com.ioscontrol.setPasteboard")
+#define kICNotifGetPasteboard CFSTR("com.ioscontrol.getPasteboard")
+#define kICPasteboardResFile @"/tmp/ioscontrol_clipboard_res.txt"
+#define kICPasteboardReqFile @"/tmp/ioscontrol_clipboard_req.txt"
+#define kICPasteboardBakFile @"/tmp/ioscontrol_clipboard_bak.txt"
 #define kICToastTextFile @"/tmp/ioscontrol_toast_text.txt"
 #define kICNotifShowToast CFSTR("com.ioscontrol.showToast")
 
@@ -163,6 +167,25 @@ static void ic_pasteboardCallback(CFNotificationCenterRef c, void *o,
   });
 }
 
+// IPC: get clipboard (daemon → app) — read clipboard and write to result file
+static void ic_getPasteboardCallback(CFNotificationCenterRef c, void *o,
+                                     CFNotificationName n, const void *obj,
+                                     CFDictionaryRef info) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSString *clipText = [UIPasteboard generalPasteboard].string ?: @"";
+    NSError *err;
+    [clipText writeToFile:kICPasteboardResFile
+               atomically:YES
+                 encoding:NSUTF8StringEncoding
+                    error:&err];
+    if (err) {
+      NSLog(@"📋 IPC: failed to write clipboard result: %@", err);
+    } else {
+      NSLog(@"📋 IPC: clipboard read, len=%lu", (unsigned long)clipText.length);
+    }
+  });
+}
+
 // IPC: toast (daemon → app) — reads file and shows UNNotification banner
 static void ic_toastCallback(CFNotificationCenterRef c, void *o,
                              CFNotificationName n, const void *obj,
@@ -214,6 +237,12 @@ static void ic_toastCallback(CFNotificationCenterRef c, void *o,
       kICNotifShowToast, NULL,
       CFNotificationSuspensionBehaviorDeliverImmediately);
   NSLog(@"📡 IPC: Toast listener registered");
+
+  CFNotificationCenterAddObserver(
+      darwin, (__bridge void *)self, ic_getPasteboardCallback,
+      kICNotifGetPasteboard, NULL,
+      CFNotificationSuspensionBehaviorDeliverImmediately);
+  NSLog(@"📡 IPC: GetPasteboard listener registered");
 }
 
 // ═══════════════════════════════════════════
