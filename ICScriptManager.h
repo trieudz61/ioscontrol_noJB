@@ -7,7 +7,7 @@
 // Returns path to scripts directory (creates if needed)
 NSString *ic_scriptsDir(void);
 
-// List all .lua scripts → NSArray of filenames (basename only)
+// List all .lua and .txt files → NSArray of filenames (basename only)
 NSArray<NSString *> *ic_scriptList(void);
 
 // Read script content → NSString (nil if not found)

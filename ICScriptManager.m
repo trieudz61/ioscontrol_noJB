@@ -10,17 +10,9 @@ extern void logMsg(const char *fmt, ...);
 // ═══════════════════════════════════════════
 
 NSString *ic_scriptsDir(void) {
-  // Use NSDocumentDirectory relative to app container
-  // Daemon inherits the app's sandbox, so this works via posix_spawn
-  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-                                                       NSUserDomainMask, YES);
-  NSString *docs = paths.firstObject;
-  if (!docs) {
-    // Fallback for daemon that may not have HomeDir set
-    docs = @"/var/mobile/Containers/Data/Application";
-    logMsg("⚠️ [ScriptMgr] NSDocumentDirectory nil, using fallback");
-  }
-  NSString *scriptsDir = [docs stringByAppendingPathComponent:@"scripts"];
+  // Use /var/mobile/Documents/scripts — shared path accessible from both
+  // daemon sandbox and user-accessible via e.g. Filza/ssh
+  static NSString *scriptsDir = @"/var/mobile/Documents/scripts";
   NSFileManager *fm = [NSFileManager defaultManager];
   if (![fm fileExistsAtPath:scriptsDir]) {
     NSError *err = nil;
@@ -38,14 +30,17 @@ NSString *ic_scriptsDir(void) {
   return scriptsDir;
 }
 
-// Sanitize filename: strip directory traversal, ensure .lua extension
+// Sanitize filename: strip directory traversal
+// Auto-assign .lua if no extension; accept both .lua and .txt
 static NSString *sanitizeName(NSString *name) {
   if (!name || name.length == 0)
     return nil;
   // Strip any path components
   name = name.lastPathComponent;
-  // Ensure .lua extension
-  if (![name.pathExtension.lowercaseString isEqualToString:@"lua"]) {
+  NSString *ext = name.pathExtension.lowercaseString;
+  if (ext.length == 0) {
+    name = [name stringByAppendingPathExtension:@"lua"];
+  } else if (![ext isEqualToString:@"lua"] && ![ext isEqualToString:@"txt"]) {
     name = [name stringByAppendingPathExtension:@"lua"];
   }
   return name;
@@ -65,14 +60,15 @@ NSArray<NSString *> *ic_scriptList(void) {
            err.localizedDescription.UTF8String);
     return @[];
   }
-  // Filter to .lua only, sort alphabetically
-  NSArray *lua = [all
+  // Filter to .lua and .txt, sort alphabetically
+  NSArray *scripts = [all
       filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(
                                                    NSString *name,
                                                    NSDictionary *bindings) {
-        return [name.pathExtension.lowercaseString isEqualToString:@"lua"];
+        NSString *ext = name.pathExtension.lowercaseString;
+        return [ext isEqualToString:@"lua"] || [ext isEqualToString:@"txt"];
       }]];
-  return [lua sortedArrayUsingSelector:@selector(compare:)];
+  return [scripts sortedArrayUsingSelector:@selector(compare:)];
 }
 
 NSString *ic_scriptRead(NSString *name) {

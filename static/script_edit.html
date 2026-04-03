@@ -22,6 +22,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css" />
     <style>
+      /* Autocomplete — full signatures, readable on dark UI */
+      .CodeMirror-hints {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        max-width: min(560px, 94vw);
+        background: #121826 !important;
+        border: 1px solid rgba(0, 212, 255, 0.22) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      }
+      .CodeMirror-hint {
+        color: #e8e8f0 !important;
+        padding: 5px 10px !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+      .CodeMirror-hint:last-child { border-bottom: none; }
+      .CodeMirror-hint-select {
+        background: rgba(0, 212, 255, 0.2) !important;
+        color: #fff !important;
+      }
       :root {
         --bg: #060a12;
         --surface: #0d1220;
@@ -460,7 +479,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
     <div class="statusbar">
       <span id="sb-cursor">Ln 1, Col 1</span>
       <span id="sb-lines">Lines: 9</span>
-      <span>Lua 5.4</span>
+      <span id="sb-mode">Lua 5.4</span>
       <span id="sb-file">untitled.lua</span>
     </div>
     </div> <!-- close editor-col -->
@@ -530,39 +549,83 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         document.getElementById("file-status").className = "file-status modified";
       });
 
-      // ── Lua autocomplete ──
-      var LUA_HINTS = [
-        "sys.log(", "sys.toast(", "sys.sleep(", "sys.msleep(", "sys.time(", "sys.date(",
-        "sys.getenv(", "sys.home(", "sys.lock(", "sys.alert(",
-        "touch.tap(", "touch.swipe(", "touch.long_press(", "touch.down(", "touch.move(", "touch.up(",
-        "touch.tap_image(", "touch.tap_text(",
-        "screen.get_size(", "screen.get_color(", "screen.capture(", "screen.ocr(",
-        "screen.find_color(", "screen.find_multi_color(", "screen.find_text(", "screen.find_image(",
-        "app.launch(", "app.kill(", "app.list(", "app.frontmost(", "app.is_running(",
-        "key.press(", "key.down(", "key.up(", "key.input_text(",
-        "clipboard.read(", "clipboard.write(",
-        "json.encode(", "json.decode(", "base64.encode(", "base64.decode(",
-        "re.match(", "re.gmatch(", "re.gsub(", "re.test(",
-        "http.get(", "http.post(",
-        "timer.sleep(", "timer.now(",
-        "file.read(", "file.write(", "file.append(", "file.clear(",
+      // ── Lua autocomplete (display = full sig from API docs; insert = name + () + cursor inside) ──
+      var LUA_SIGS = [
+        "sys.log(message)", "sys.toast(message [, duration])", "sys.alert(message [, title])", "sys.msleep(ms)", "sys.sleep(seconds)",
+        "sys.time()", "sys.date([format])", "sys.getenv(key)", "sys.home()", "sys.lock()",
+        "touch.tap(x, y)", "touch.swipe(x1, y1, x2, y2 [, duration])", "touch.long_press(x, y [, duration])",
+        "touch.down(x, y [, finger])", "touch.move(x, y [, finger])", "touch.up(x, y [, finger])",
+        "touch.tap_image(path [, threshold [, timeout]])", "touch.tap_text(text [, timeout])",
+        "screen.get_size()", "screen.get_color(x, y)", "screen.capture()", "screen.ocr()",
+        "screen.find_color(r, g, b [, tolerance])", "screen.find_multi_color(r, g, b [, tolerance [, max]])",
+        "screen.find_text(target [, timeout])", "screen.find_image(path [, threshold [, timeout]])",
+        "app.launch(bundleID)", "app.kill(bundleID)", "app.is_running(bundleID)", "app.frontmost()", "app.list()",
+        "key.press(name)", "key.down(name)", "key.up(name)", "key.input_text(text)",
+        "clipboard.read()", "clipboard.write(text)",
+        "json.encode(value)", "json.decode(str)", "base64.encode(data)", "base64.decode(str)",
+        "re.match(str, pattern)", "re.gmatch(str, pattern)", "re.gsub(str, pattern, replacement)", "re.test(str, pattern)",
+        "http.get(url [, headers])", "http.post(url, body [, content_type [, headers]])",
+        "timer.sleep(ms)", "timer.now()",
+        "file.read(path)", "file.write(path, content)", "file.append(path, content)", "file.clear(path)",
+        "file.remove_first_line(path)", "file.remove_last_line(path)",
       ];
+
+      function sigToInsertText(sig) {
+        var o = sig.indexOf("(");
+        if (o < 0) return sig;
+        var c = sig.lastIndexOf(")");
+        var inner = (c > o ? sig.slice(o + 1, c) : sig.slice(o + 1)).trim();
+        if (inner === "") {
+          if (c > o) return sig;
+          return sig + ")";
+        }
+        return sig.slice(0, o + 1) + ")";
+      }
+
+      function cursorChAfterOpenParen(insertText) {
+        var o = insertText.indexOf("(");
+        if (o < 0) return insertText.length;
+        return o + 1;
+      }
+
       CodeMirror.registerHelper("hint", "lua", function(cm) {
         var cur = cm.getCursor();
         var line = cm.getLine(cur.line);
         var start = cur.ch;
         var word = line.slice(0, start);
-        var list = LUA_HINTS.filter(function(h) {
-          return h.toLowerCase().startsWith(word.split(/[\s,()\[\]{}]+/).pop().toLowerCase());
+        var token = word.split(/[\s,()\[\]{}]+/).pop() || "";
+        var tlow = token.toLowerCase();
+        var fromCh = start - token.length;
+        var list = LUA_SIGS.filter(function(sig) {
+          return sig.toLowerCase().startsWith(tlow);
+        }).map(function(displayText) {
+          var insertText = sigToInsertText(displayText);
+          var cursorRel = cursorChAfterOpenParen(insertText);
+          return {
+            displayText: displayText,
+            text: insertText,
+            hint: function(cm, data, completion) {
+              cm.replaceRange(completion.text, data.from, data.to, "complete");
+              cm.setCursor(CodeMirror.Pos(data.from.line, data.from.ch + cursorRel));
+            },
+          };
         });
         return {
           list: list,
-          from: CodeMirror.Pos(cur.line, start - word.split(/[\s,()\[\]{}]+/).pop().length),
+          from: CodeMirror.Pos(cur.line, fromCh),
           to: CodeMirror.Pos(cur.line, start),
         };
       });
+      var autocompleteEnabled = true;
+
+      function setEditorMode(filename) {
+        var isLua = !filename || !filename.endsWith(".txt");
+        document.getElementById("sb-mode").textContent = isLua ? "Lua 5.4" : "Plain Text";
+        autocompleteEnabled = isLua;
+      }
+
       cm.on("inputRead", function(cm, change) {
-        if (change.text[0] && /\w|\./.test(change.text[0])) {
+        if (autocompleteEnabled && change.text[0] && /\w|\./.test(change.text[0])) {
           cm.showHint({ hint: CodeMirror.hint.lua, completeSingle: false });
         }
       });
@@ -598,6 +661,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
           document.getElementById("sb-file").textContent = name;
           document.getElementById("file-status").textContent = "saved";
           document.getElementById("file-status").className = "file-status saved";
+          setEditorMode(name);
         } catch (e) { appendOutput("Load failed: " + e.message, true); }
       });
 
@@ -607,6 +671,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
           if (!name) return;
           currentFile = name.endsWith(".lua") ? name : name + ".lua";
           document.getElementById("sb-file").textContent = currentFile;
+          setEditorMode(currentFile);
         }
         try {
           await fetch(API + "/api/script/file?name=" + encodeURIComponent(currentFile), {
@@ -627,6 +692,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         document.getElementById("sb-file").textContent = "untitled.lua";
         document.getElementById("file-status").textContent = "unsaved";
         document.getElementById("file-status").className = "file-status";
+        setEditorMode("");
         cm.focus();
       });
 
@@ -742,6 +808,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
                 document.getElementById("file-status").textContent = "saved";
                 document.getElementById("file-status").className = "file-status saved";
                 document.getElementById("file-select").value = name;
+                setEditorMode(name);
                 refreshFilePanel();
               } catch(e) { appendOutput("Load failed: " + e.message + "\n", true); }
             });
@@ -773,6 +840,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         document.getElementById("sb-file").textContent = "untitled.lua";
         document.getElementById("file-status").textContent = "unsaved";
         document.getElementById("file-status").className = "file-status";
+        setEditorMode("");
         cm.focus();
         refreshFilePanel();
       });
@@ -800,6 +868,7 @@ sys.log("Tapped center: " .. w .. "x" .. h)
                 document.getElementById("sb-file").textContent = hashName;
                 document.getElementById("file-status").textContent = "saved";
                 document.getElementById("file-status").className = "file-status saved";
+                setEditorMode(hashName);
               }
             } catch (e) { console.error("Auto-load from hash failed:", e); }
           }, 500);

@@ -643,6 +643,8 @@ static const luaL_Reg kTimerLib[] = {
 // file.write(path, content) → true or nil, error
 // file.append(path, content) → true or nil, error
 // file.clear(path) → true or nil, error
+// file.remove_first_line(path) → true or nil, error
+// file.remove_last_line(path) → true or nil, error
 // ═══════════════════════════════════════════════════════════════════════
 
 static int lua_file_read(lua_State *L) {
@@ -729,11 +731,73 @@ static int lua_file_clear(lua_State *L) {
   return 1;
 }
 
+// file.remove_first_line(path) → true or nil, error
+static int lua_file_remove_first_line(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSError *err = nil;
+
+  NSString *content = [NSString stringWithContentsOfFile:pathStr
+                                               encoding:NSUTF8StringEncoding
+                                                  error:&err];
+  if (err || !content) {
+    lua_pushnil(L);
+    lua_pushstring(L, err ? err.localizedDescription.UTF8String : "file.remove_first_line error");
+    return 2;
+  }
+
+  NSArray *lines = [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+  if (lines.count <= 1) {
+    [content writeToFile:pathStr atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    lua_pushboolean(L, YES);
+    return 1;
+  }
+
+  NSArray *remaining = [lines subarrayWithRange:NSMakeRange(1, lines.count - 1)];
+  NSString *newContent = [remaining componentsJoinedByString:@"\n"];
+  [newContent writeToFile:pathStr atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+  lua_pushboolean(L, YES);
+  return 1;
+}
+
+// file.remove_last_line(path) → true or nil, error
+static int lua_file_remove_last_line(lua_State *L) {
+  const char *path = luaL_checkstring(L, 1);
+  NSString *pathStr = [NSString stringWithUTF8String:path];
+  NSError *err = nil;
+
+  NSString *content = [NSString stringWithContentsOfFile:pathStr
+                                               encoding:NSUTF8StringEncoding
+                                                  error:&err];
+  if (err || !content) {
+    lua_pushnil(L);
+    lua_pushstring(L, err ? err.localizedDescription.UTF8String : "file.remove_last_line error");
+    return 2;
+  }
+
+  NSArray *lines = [content componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+  if (lines.count <= 1) {
+    [content writeToFile:pathStr atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    lua_pushboolean(L, YES);
+    return 1;
+  }
+
+  NSArray *remaining = [lines subarrayWithRange:NSMakeRange(0, lines.count - 1)];
+  NSString *newContent = [remaining componentsJoinedByString:@"\n"];
+  [newContent writeToFile:pathStr atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+  lua_pushboolean(L, YES);
+  return 1;
+}
+
 static const luaL_Reg kFileLib[] = {
     {"read", lua_file_read},
     {"write", lua_file_write},
     {"append", lua_file_append},
     {"clear", lua_file_clear},
+    {"remove_first_line", lua_file_remove_first_line},
+    {"remove_last_line", lua_file_remove_last_line},
     {NULL, NULL}
 };
 

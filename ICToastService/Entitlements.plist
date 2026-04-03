@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ═══ Identity (REQUIRED for UIApplicationMain → BackBoard) ═══ -->
+    <key>application-identifier</key>
+    <string>com.trieu.ictoastservice</string>
+    <key>com.apple.developer.team-identifier</key>
+    <string>$(TeamIdentifierPrefix)</string>
+
+    <!-- ═══ Core: BackBoard/FrontBoard Display Access ═══ -->
+    <!-- These are the critical entitlements that let a posix_spawn'd process
+         create UIWindows visible on top of other apps.
+         Reverse-engineered from XXTouch's XXTUIService binary. -->
+    <key>com.apple.backboard.client</key>
+    <true/>
+    <key>com.apple.QuartzCore.displayable-context</key>
+    <true/>
+    <key>com.apple.QuartzCore.secure-mode</key>
+    <true/>
+    <key>com.apple.springboard.accessibility-window-hosting</key>
+    <true/>
+    <key>com.apple.springboard-ui.client</key>
+    <true/>
+
+    <!-- ═══ FrontBoard / RunningBoard (process lifecycle) ═══ -->
+    <key>com.apple.frontboard.launchapplications</key>
+    <true/>
+    <key>com.apple.runningboard.assertions.frontboard</key>
+    <true/>
+    <key>com.apple.runningboard.launchprocess</key>
+    <true/>
+    <key>com.apple.runningboard.process-state</key>
+    <true/>
+
+    <!-- ═══ Mach service lookups (UIKit rendering pipeline) ═══ -->
+    <key>com.apple.security.exception.mach-lookup.global-name</key>
+    <array>
+        <string>com.apple.UIKit.statusbarserver</string>
+        <string>com.apple.frontboard.systemappservices</string>
+        <string>com.apple.springboard.SBRendererService</string>
+    </array>
+
+    <!-- ═══ Sandbox / Platform ═══ -->
+    <key>com.apple.private.security.no-sandbox</key>
+    <true/>
+    <key>com.apple.private.security.container-required</key>
+    <false/>
+    <key>com.apple.private.security.no-container</key>
+    <true/>
+    <key>platform-application</key>
+    <true/>
+    <key>run-unsigned-code</key>
+    <true/>
+    <key>get-task-allow</key>
+    <true/>
+
+    <!-- ═══ Anti-Jetsam ═══ -->
+    <key>com.apple.private.memorystatus</key>
+    <true/>
+    <key>com.apple.private.kernel.jetsam</key>
+    <true/>
+
+    <!-- ═══ HID (for ignores-hit / passthrough) ═══ -->
+    <key>com.apple.private.hid.client.event-dispatch</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-filter</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-monitor</key>
+    <true/>
+    <key>com.apple.private.hid.client.service-protected</key>
+    <true/>
+    <key>com.apple.private.hid.manager.client</key>
+    <true/>
+</dict>
+</plist>

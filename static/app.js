@@ -799,21 +799,6 @@
   // Keyboard Shortcuts
   // ═══════════════════════════════════════════
 
-  $("btn-shortcuts").addEventListener("click", function () {
-    $("shortcuts-modal").classList.add("show");
-    if (window.innerWidth < 960) closeDrawer();
-  });
-
-  $("btn-close-shortcuts").addEventListener("click", function () {
-    $("shortcuts-modal").classList.remove("show");
-  });
-
-  $("shortcuts-modal").addEventListener("click", function (e) {
-    if (e.target === this) {
-      this.classList.remove("show");
-    }
-  });
-
   document.addEventListener("keydown", function (e) {
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") {
       if (!e.ctrlKey && !e.metaKey) return;
@@ -859,7 +844,6 @@
     }
 
     if (key === "Escape") {
-      $("shortcuts-modal").classList.remove("show");
       closeDrawer();
       return;
     }

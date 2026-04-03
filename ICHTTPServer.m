@@ -1676,6 +1676,7 @@ static void handleClient(int clientFd) {
       strcmp(path, "/api/screen/color") != 0 &&
       strcmp(path, "/api/log") != 0 &&
       strcmp(path, "/api/script/status") != 0 &&
+      strcmp(path, "/api/device/info") != 0 &&
       strcmp(path, "/api/system/log") != 0 &&
       strcmp(method, "OPTIONS") != 0) {
     logMsg("🌐 %s %s (body=%zu bytes)", method, path, strlen(body));

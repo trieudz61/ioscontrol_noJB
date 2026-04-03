@@ -152,36 +152,56 @@ static int lua_touch_up(lua_State *L) {
   ic_touchUp(x, y, (int)f);
   return 0;
 }
-// touch.tap_image(path [, threshold]) → true (or nil, errmsg)
+// touch.tap_image(path [, threshold [, timeout]]) → true (or nil, errmsg)
 static int lua_touch_tap_image(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
   double threshold = luaL_optnumber(L, 2, 0.8);
+  double timeout = luaL_optnumber(L, 3, 10.0);
   int outX = 0, outY = 0;
-  BOOL found = ic_findImage([NSString stringWithUTF8String:path], threshold,
-                            &outX, &outY);
+  double elapsed = 0.0;
+  BOOL found = NO;
+
+  while (elapsed < timeout) {
+    found = ic_findImage([NSString stringWithUTF8String:path], threshold, &outX, &outY);
+    if (found) break;
+    usleep(300000); // 0.3s
+    elapsed += 0.3;
+  }
+
   if (!found) {
     lua_pushnil(L);
     lua_pushstring(L, "image not found");
     return 2;
   }
   ic_tap(outX, outY);
-  logMsg("🤖 [Lua] touch.tap_image → tap(%d, %d)", outX, outY);
+  logMsg("🤖 [Lua] touch.tap_image → tap(%d, %d) [%.1fs]", outX, outY, elapsed);
   lua_pushboolean(L, 1);
   return 1;
 }
 
-// touch.tap_text(text) → true (or nil, errmsg)
+// touch.tap_text(text [, timeout]) → true (or nil, errmsg)
 static int lua_touch_tap_text(lua_State *L) {
   const char *text = luaL_checkstring(L, 1);
+  double timeout = luaL_optnumber(L, 2, 10.0);
   int outX = 0, outY = 0;
-  BOOL found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+  double elapsed = 0.0;
+  BOOL found = NO;
+
+  while (elapsed < timeout) {
+    ic_captureScreen(0.8); // refresh OCR cache
+    found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+    if (found) break;
+    usleep(300000); // 0.3s
+    elapsed += 0.3;
+  }
+
   if (!found) {
     lua_pushnil(L);
     lua_pushstring(L, "text not found on screen");
     return 2;
   }
   ic_tap(outX, outY);
-  logMsg("🤖 [Lua] touch.tap_text('%s') → tap(%d, %d)", text, outX, outY);
+  logMsg("🤖 [Lua] touch.tap_text('%s') → tap(%d, %d) [%.1fs]", text, outX, outY, elapsed);
   lua_pushboolean(L, 1);
   return 1;
 }
@@ -292,11 +312,22 @@ static int lua_screen_find_multi_color(lua_State *L) {
   return 1;
 }
 
-// screen.find_text(target) → x, y  (or nil, errmsg)
+// screen.find_text(target [, timeout]) → x, y  (or nil, errmsg)
 static int lua_screen_find_text(lua_State *L) {
   const char *text = luaL_checkstring(L, 1);
+  double timeout = luaL_optnumber(L, 2, 10.0);
   int outX = 0, outY = 0;
-  BOOL found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+  double elapsed = 0.0;
+  BOOL found = NO;
+
+  while (elapsed < timeout) {
+    ic_captureScreen(0.8); // refresh OCR cache
+    found = ic_findText([NSString stringWithUTF8String:text], &outX, &outY);
+    if (found) break;
+    usleep(300000); // 0.3s
+    elapsed += 0.3;
+  }
+
   if (!found) {
     lua_pushnil(L);
     lua_pushstring(L, "text not found");
@@ -307,13 +338,22 @@ static int lua_screen_find_text(lua_State *L) {
   return 2;
 }
 
-// screen.find_image(path [, threshold]) → x, y  (or nil, errmsg)
+// screen.find_image(path [, threshold [, timeout]]) → x, y  (or nil, errmsg)
 static int lua_screen_find_image(lua_State *L) {
   const char *path = luaL_checkstring(L, 1);
   double threshold = luaL_optnumber(L, 2, 0.8);
+  double timeout = luaL_optnumber(L, 3, 10.0);
   int outX = 0, outY = 0;
-  BOOL found = ic_findImage([NSString stringWithUTF8String:path], threshold,
-                            &outX, &outY);
+  double elapsed = 0.0;
+  BOOL found = NO;
+
+  while (elapsed < timeout) {
+    found = ic_findImage([NSString stringWithUTF8String:path], threshold, &outX, &outY);
+    if (found) break;
+    usleep(300000); // 0.3s
+    elapsed += 0.3;
+  }
+
   if (!found) {
     lua_pushnil(L);
     lua_pushstring(L, "image not found");
