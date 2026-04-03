@@ -1,7 +1,7 @@
 # 📋 IOSControl Rebuild — Todo
 
 > Rebuild từ đầu, từ đơn giản → phức tạp
-> Cập nhật: 2026-04-02 19:44
+> Cập nhật: 2026-04-03
 
 ---
 
@@ -45,7 +45,7 @@
 
 ---
 
-## Phase 4: Web IDE Frontend ✅ VERIFIED BUILD
+## Phase 4: Web IDE Frontend ✅ VERIFIED ON DEVICE
 
 - [x] static/index.html + style.css + app.js — complete rewrite
 - [x] Premium dark theme: glassmorphism, gradients, micro-animations
@@ -121,7 +121,7 @@
 
 ---
 
-## Phase 7: XXTouch Core Features API ✅ VERIFIED BUILD
+## Phase 7: XXTouch Core Features API ✅ VERIFIED ON DEVICE
 
 > Phase 7 complete — all APIs wired into daemon + Lua bindings registered.
 > New modules: ICScriptManager.h/m, ICAppControl.h/m, ICKeyInput.h/m
@@ -164,7 +164,7 @@
 
 ---
 
-## Phase 8: Native iPhone UI ✅ VERIFIED BUILD
+## Phase 8: Native iPhone UI ✅ VERIFIED ON DEVICE
 
 > UITabBarController + 4 tabs + dark mode + purple accent.
 
@@ -256,21 +256,25 @@
 
 ---
 
-## 🐛 Phase 11: Bug Fixes
+## Phase 11: Bug Fixes ✅ ALL FIXED
 
-### ✅ FIXED (8 bugs)
+### ✅ FIXED (12 bugs total)
 
-| Bug | Tình trạng | Mô tả | Fix |
-|-----|-----------|-------|-----|
-| BUG-1 | ✅ FIXED | `sys.toast`/`sys.alert` — daemon không có UIWindow | IPC Darwin Notification + UNUserNotificationCenter + ICToastService |
-| BUG-2 | ✅ FIXED | `/api/app/list` trả về empty trên TrollStore | Fallback scan `/var/containers/Bundle/Application/` |
-| BUG-3 | ✅ FIXED | ICScriptsViewController "New Script" không mở editor | SFSafariViewController tới script_edit.html#<name> |
-| BUG-5 | ✅ FIXED | `http.get/post` HTTPS fail (ATS) | `NSAllowsArbitraryLoads=YES` trong Info.plist |
-| BUG-7 | ✅ FIXED | Device model raw string ("iPhone10,1") | `uname().machine` → lookup table 40+ models |
-| BUG-10 | ✅ FIXED | Daemon bị kill không tự restart | setsid + memorystatus + App watchdog 3s |
-| BUG-11 | ✅ FIXED | Home/Lock button không hoạt động | Consumer Menu `{0x0C, 0x40}` + Admin client |
-| BUG-12 | ✅ FIXED | Unicode text (Tiếng Việt) qua `key.input_text()` | IPC clipboard paste: daemon→app→Cmd+V |
-| BUG-13 | ✅ FIXED | Không truyền phím PC → iPhone qua Web IDE | WS keydown → phím iPhone ánh xạ |
+| Bug | Mô tả | Fix |
+|-----|-------|-----|
+| BUG-1 | `sys.toast`/`sys.alert` — daemon không có UIWindow | IPC Darwin Notification + UNUserNotificationCenter + ICToastService |
+| BUG-2 | `/api/app/list` trả về empty trên TrollStore | Fallback scan `/var/containers/Bundle/Application/` |
+| BUG-3 | ICScriptsViewController "New Script" không mở editor | SFSafariViewController tới script_edit.html#<name> |
+| BUG-4 | Console duplicate log lines | Track `_lastLogLength` trong `ICHTTPServer.m`, chỉ append phần mới |
+| BUG-5 | `http.get/post` HTTPS fail (ATS) | `NSAllowsArbitraryLoads=YES` trong Info.plist |
+| BUG-6 | Color Picker /api/screen route | Route hoạt động đúng — NOT A BUG |
+| BUG-7 | Device model raw string ("iPhone10,1") | `uname().machine` → lookup table 40+ models |
+| BUG-8 | `screen.get_size()` trả 0,0 khi chưa capture | Init gScreenW/gScreenH từ UIScreen khi daemon start |
+| BUG-9 | Color Picker touch scroll conflict trên iPhone | `preventDefault()` + `pointerId` API |
+| BUG-10 | Daemon bị kill không tự restart | setsid + memorystatus + App watchdog 3s |
+| BUG-11 | Home/Lock button không hoạt động | Consumer Menu `{0x0C, 0x40}` + Admin client |
+| BUG-12 | Unicode text (Tiếng Việt) qua `key.input_text()` | IPC clipboard paste: daemon→app→Cmd+V |
+| BUG-13 | Không truyền phím PC → iPhone qua Web IDE | WS keydown → phím iPhone ánh xạ |
 
 ### 🟡 NEEDS TESTING (chưa verify on device)
 
@@ -282,32 +286,74 @@
 | BUG-5 | HTTPS requests | `http.get("https://httpbin.org/get")` → status 200 |
 | BUG-7 | Device model name | Device Info tab hiện tên đẹp |
 | BUG-10 | Daemon respawn | Kill daemon → app tự respawn trong ~10s |
-
-### 🔴 OPEN BUGS
-
-| Bug | Priority | Mô tả | Action needed |
-|-----|----------|-------|---------------|
-| BUG-4 | 🟡 MEDIUM | Console duplicate log lines | Track `_lastLogLength`, chỉ append phần mới |
-| BUG-6 | ✅ NOT A BUG | Color Picker /api/screen route | Route hoạt động đúng, không cần fix |
-| BUG-8 | 🟢 LOW | `screen.get_size()` trả 0,0 khi chưa capture | Init gScreenW/gScreenH từ UIScreen khi daemon start |
-| BUG-9 | 🟢 LOW | Color Picker touch scroll conflict trên iPhone | `preventDefault()` + `pointerId` API |
+| BUG-13 | WS keyboard từ Web IDE | Nhấn phím trên Mac → iPhone nhận được |
 
 ---
 
-## 🗓️ Tiếp theo (chưa plan)
+## Phase 12: Web IDE Polish & UX Enhancements ✅ VERIFIED BUILD
+
+> Phase 12 complete — tập trung vào trải nghiệm người dùng Web IDE.
+
+### 12a: TXT File Support ✅
+
+- [x] Hỗ trợ `.txt` file trong Script Manager (`ICScriptManager.m`)
+- [x] Lua script engine chạy `.lua` files, plain text cho `.txt`
+- [x] File manager UI nhận diện extension → icon khác nhau
+- [x] `/api/script/file` trả về raw text cho .txt, wrapped `{data: "..."}` cho .lua
+
+### 12b: Autocomplete — Full Signatures ✅
+
+- [x] Autocomplete popup hiện **đầy đủ signature** từ API docs
+  - Ví dụ: `sys.toast(message [, duration])` thay vì chỉ `sys.toast`
+- [x] Selected item → insert `func()` với cursor trong dấu ngoặc
+- [x] Group theo module (sys, touch, screen, app, key, clipboard, json, base64, re, http, timer, file)
+- [x] Dark styled dropdown matching theme
+- [x] `sys.toast` signature sửa: thêm `[, duration]` optional param
+- [x] `file.remove_first_line()` và `file.remove_last_line()` thêm vào API
+
+### 12c: Icon System Upgrade ✅
+
+- [x] Chuyển từ Material Icons sang **Lucide Icons** (SVG sprite)
+- [x] Lucide nhất quán hơn, nhiều icon hơn, nhẹ hơn
+- [x] Updated trong `static/style.css` và `static/index.html`
+
+### 12d: Shortcuts Drawer Removal ✅
+
+- [x] Bỏ shortcuts drawer khỏi `index.html` (tối giản UI)
+- [x] Giữ keyboard shortcuts hoạt động (Ctrl+1/2/3, Ctrl+S, Ctrl+Enter, R, Escape)
+- [x] Giảm clutter cho màn hình nhỏ
+
+### 12e: ICToastService Daemon ✅
+
+- [x] `ICToastService/` sub-bundle hoàn chỉnh (main.m + Entitlements)
+- [x] `ICToastService.app/` trong bundle chính
+- [x] Daemon watchdog: `kill(pid, 0)` check 3s → respawn nếu die
+- [x] Toast text từ `/tmp/ictoast_payload.json` — Darwin notification `com.ioscontrol.toast.show`
+- [x] Build tự động trong Makefile `after-stage`
+
+### 12f: API Docs Path Updates ✅
+
+- [x] API docs path cập nhật trong `index.html` navigation
+- [x] HTML structure được clean up
+- [x] JS reference paths cố định
+
+---
+
+## 🗓️ Tiếp theo
 
 ### Ưu tiên cao
-- [ ] Test toàn bộ BUG fixes đã implement trên device
-- [ ] Fix BUG-4: Console duplicate log lines
-- [ ] Build & deploy phiên bản mới nhất lên device
+- [ ] Test toàn bộ BUG fixes trên device (BUG-1, 2, 3, 5, 7, 10, 13)
+- [ ] Build & deploy phiên bản 0.5.2 lên device
 
 ### Ưu tiên trung bình
-- [ ] Fix BUG-8: screen.get_size() init
-- [ ] Fix BUG-9: Picker touch scroll conflict
 - [ ] Thêm Lua API: `sys.home()`, `sys.lock()` (đã có ic_pressKey, cần expose)
+- [ ] `screen.find_image()` — template matching thực sự (hiện tại placeholder)
+- [ ] WebSocket improvements: reconnect logic, error handling
 
 ### Nice to have
-- [ ] Script encryption 9f
-- [ ] Daemon microservices 10e
+- [ ] Script encryption 9f (`.lua` → `.xui` bytecode)
+- [ ] Daemon microservices 10e (volume-key-control)
 - [ ] CI/CD pipeline (auto build + push)
 - [ ] OTA update mechanism
+- [ ] `file.read_line()` / `file.lines()` iterator
+- [ ] `screen.match_template()` — OpenCV-free pixel matching
