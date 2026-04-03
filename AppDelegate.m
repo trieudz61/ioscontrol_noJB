@@ -1,5 +1,5 @@
 // AppDelegate.m — IOSControl App Entry Point (Phase 8)
-// Root UI: UITabBarController with 4 tabs
+// Root UI: UITabBarController with 3 tabs
 // Daemon spawned via ICDaemonLauncher on app launch
 // Daemon watchdog: app polls daemon every 5s, respawns if dead (XXTouch
 // pattern)
@@ -7,7 +7,6 @@
 #import "AppDelegate.h"
 #import "ICConsoleViewController.h"
 #import "ICDaemonLauncher.h"
-#import "ICDeviceViewController.h"
 #import "ICScriptsViewController.h"
 #import "ICSettingsViewController.h"
 #import <CoreFoundation/CoreFoundation.h>
@@ -64,16 +63,7 @@
               image:[UIImage systemImageNamed:@"terminal"]
       selectedImage:[UIImage systemImageNamed:@"terminal.fill"]];
 
-  // Tab 3: Device
-  ICDeviceViewController *device = [[ICDeviceViewController alloc] init];
-  UINavigationController *nav3 =
-      [[UINavigationController alloc] initWithRootViewController:device];
-  nav3.tabBarItem =
-      [[UITabBarItem alloc] initWithTitle:@"Device"
-                                    image:[UIImage systemImageNamed:@"iphone"]
-                            selectedImage:[UIImage systemImageNamed:@"iphone"]];
-
-  // Tab 4: Settings
+  // Tab 3: Settings
   ICSettingsViewController *settings = [[ICSettingsViewController alloc] init];
   UINavigationController *nav4 =
       [[UINavigationController alloc] initWithRootViewController:settings];
@@ -82,7 +72,7 @@
               image:[UIImage systemImageNamed:@"gearshape"]
       selectedImage:[UIImage systemImageNamed:@"gearshape.fill"]];
 
-  tabs.viewControllers = @[ nav1, nav2, nav3, nav4 ];
+  tabs.viewControllers = @[ nav1, nav2, nav4 ];
 
   // ── Style Tab Bar ──
   UITabBarAppearance *tabAppearance = [UITabBarAppearance new];
