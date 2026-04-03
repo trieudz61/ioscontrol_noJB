@@ -550,7 +550,41 @@ sys.log("Tapped center: " .. w .. "x" .. h)
       });
 
       // ── Lua autocomplete (display = full sig from API docs; insert = name + () + cursor inside) ──
-      var LUA_SIGS = [
+
+      // Plain keywords that just insert the word
+      var LUA_KEYWORDS = [
+        "if", "else", "elseif", "while", "for", "do", "end",
+        "repeat", "until", "return", "break", "then", "function",
+        "local", "in", "pairs", "ipairs", "table", "require",
+        "and", "or", "not", "true", "false", "nil",
+      ];
+
+      // Snippets with placeholders
+      var LUA_SNIPPETS = [
+        { display: "if condition then end", insert: "if ${1:condition} then\n\t$0\nend", type: "keyword" },
+        { display: "if condition then else end", insert: "if ${1:condition} then\n\t$0\nelse\nend", type: "keyword" },
+        { display: "if elseif then end", insert: "if ${1:condition} then\n\t$0\nelseif ${2:condition} then\nend", type: "keyword" },
+        { display: "while condition do end", insert: "while ${1:condition} do\n\t$0\nend", type: "keyword" },
+        { display: "for i = start, end do end", insert: "for ${1:i} = ${2:1}, ${3:10} do\n\t$0\nend", type: "keyword" },
+        { display: "for k, v in pairs(t) do end", insert: "for ${1:k}, ${2:v} in pairs(${3:t}) do\n\t$0\nend", type: "keyword" },
+        { display: "for k, v in ipairs(t) do end", insert: "for ${1:k}, ${2:v} in ipairs(${3:t}) do\n\t$0\nend", type: "keyword" },
+        { display: "repeat until", insert: "repeat\n\t$0\nuntil ${1:condition}", type: "keyword" },
+        { display: "function name() end", insert: "function ${1:name}()\n\t$0\nend", type: "keyword" },
+        { display: "local function name() end", insert: "local function ${1:name}()\n\t$0\nend", type: "keyword" },
+        { display: "return", insert: "return $0", type: "keyword" },
+        { display: "break", insert: "break", type: "keyword" },
+        { display: "local t = {}", insert: "local ${1:t} = {}", type: "keyword" },
+        { display: "table.insert(t, value)", insert: "table.insert(${1:t}, ${2:value})", type: "keyword" },
+        { display: "table.remove(t, index)", insert: "table.remove(${1:t}, ${2:index})", type: "keyword" },
+        { display: "table.concat(t, sep)", insert: "table.concat(${1:t}, ${2:\"\"})", type: "keyword" },
+        { display: "table.sort(t)", insert: "table.sort(${1:t})", type: "keyword" },
+        { display: "table.unpack(t)", insert: "table.unpack(${1:t})", type: "keyword" },
+        { display: "table.pack(...)", insert: "table.pack(...)", type: "keyword" },
+        { display: "require 'module'", insert: "require '${1:module}'", type: "keyword" },
+        { display: "-- @param type desc", insert: "-- @param ${1:type} ${2:desc}", type: "comment" },
+      ];
+
+      var LUA_API = [
         "sys.log(message)", "sys.toast(message [, duration])", "sys.alert(message [, title])", "sys.msleep(ms)", "sys.sleep(seconds)",
         "sys.time()", "sys.date([format])", "sys.getenv(key)", "sys.home()", "sys.lock()",
         "touch.tap(x, y)", "touch.swipe(x1, y1, x2, y2 [, duration])", "touch.long_press(x, y [, duration])",
@@ -569,6 +603,9 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         "file.read(path)", "file.write(path, content)", "file.append(path, content)", "file.clear(path)",
         "file.remove_first_line(path)", "file.remove_last_line(path)",
       ];
+
+      // For backward compat
+      var LUA_SIGS = LUA_API;
 
       function sigToInsertText(sig) {
         var o = sig.indexOf("(");
@@ -596,7 +633,65 @@ sys.log("Tapped center: " .. w .. "x" .. h)
         var token = word.split(/[\s,()\[\]{}]+/).pop() || "";
         var tlow = token.toLowerCase();
         var fromCh = start - token.length;
-        var list = LUA_SIGS.filter(function(sig) {
+
+        // Keywords
+        var keywordItems = LUA_KEYWORDS.filter(function(kw) {
+          return kw.startsWith(tlow);
+        }).map(function(displayText) {
+          return {
+            displayText: displayText,
+            text: displayText,
+            hint: function(cm, data, completion) {
+              cm.replaceRange(completion.text, data.from, data.to, "complete");
+              cm.setCursor(data.from.line, data.from.ch + completion.text.length);
+            },
+          };
+        });
+
+        // Snippets
+        var snippetItems = LUA_SNIPPETS.filter(function(s) {
+          return s.display.toLowerCase().startsWith(tlow);
+        }).map(function(s) {
+          return {
+            displayText: "⤷ " + s.display,
+            text: s.insert,
+            hint: function(cm, data, completion) {
+              cm.replaceRange(completion.text, data.from, data.to, "complete");
+              var inserted = completion.text;
+              var tabCount = (inserted.match(/\$\{[^}]+\}/g) || []).length;
+              if (tabCount > 0) {
+                var pos = cm.getCursor();
+                var snippetState = { pos: 0, jumps: [] };
+                for (var i = 0; i < inserted.length; i++) {
+                  if (inserted[i] === '$' && inserted[i+1] === '{') {
+                    var end = inserted.indexOf('}', i);
+                    if (end > i) {
+                      var ph = inserted.slice(i+2, end);
+                      if (ph === '0') {
+                        cm.setCursor(data.from.line, data.from.ch + i);
+                        return;
+                      }
+                      i = end + 1;
+                    }
+                  }
+                }
+                var firstPlaceholder = inserted.indexOf('${');
+                if (firstPlaceholder >= 0) {
+                  var nextBrace = inserted.indexOf('}', firstPlaceholder);
+                  var defaultVal = inserted.slice(firstPlaceholder+2, nextBrace);
+                  cm.setCursor(data.from.line, data.from.ch + nextBrace + 1);
+                  cm.setSelection(
+                    CodeMirror.Pos(data.from.line, data.from.ch + firstPlaceholder),
+                    CodeMirror.Pos(data.from.line, data.from.ch + nextBrace + 1)
+                  );
+                }
+              }
+            },
+          };
+        });
+
+        // API functions
+        var apiItems = LUA_API.filter(function(sig) {
           return sig.toLowerCase().startsWith(tlow);
         }).map(function(displayText) {
           var insertText = sigToInsertText(displayText);
@@ -610,6 +705,8 @@ sys.log("Tapped center: " .. w .. "x" .. h)
             },
           };
         });
+
+        var list = [].concat(keywordItems, snippetItems, apiItems);
         return {
           list: list,
           from: CodeMirror.Pos(cur.line, fromCh),

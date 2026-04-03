@@ -275,7 +275,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h1><i class="material-icons">menu_book</i> API Reference</h1>
-        <p>IOSControl Lua API v0.7.0 — 50 functions</p>
+        <p>IOSControl Lua API v0.7.0 — 54 functions</p>
       </div>
       <div class="search-box">
         <i class="material-icons">search</i>
@@ -513,6 +513,37 @@ sys.msleep(100)
 touch.up(100, 200)
 -- Same as touch.tap(100, 200) but with manual timing`
       },
+      {
+        name: 'tap_image', sig: 'touch.tap_image(path [, threshold [, timeout]])', ret: 'boolean',
+        desc: 'Find an image template on screen and tap it. Polls every 0.3s until found or timeout expires. Returns true on success, or nil + error if not found within timeout.',
+        params: [
+          { name: 'path', type: 'string', desc: 'Absolute path to template image file (PNG/JPEG)' },
+          { name: 'threshold', type: 'number', desc: 'Match similarity threshold (0.0-1.0)', opt: true, def: '0.8' },
+          { name: 'timeout', type: 'number', desc: 'Max seconds to poll (0.3s intervals)', opt: true, def: '10.0' },
+        ],
+        example: `-- Find and tap button image
+local ok, err = touch.tap_image("/var/mobile/templates/buy_btn.png")
+if not ok then sys.log("Error: " .. err) end
+
+-- Wait longer for image to appear
+local ok = touch.tap_image("/var/mobile/templates/confirm.png", 0.9, 30.0)
+if ok then sys.log("Tapped!") end`
+      },
+      {
+        name: 'tap_text', sig: 'touch.tap_text(text [, timeout])', ret: 'boolean',
+        desc: 'Find text on screen using OCR and tap it. Polls every 0.3s until found or timeout expires. Case-insensitive partial match. Returns true on success, or nil + error if not found.',
+        params: [
+          { name: 'text', type: 'string', desc: 'Text to search for (case-insensitive)' },
+          { name: 'timeout', type: 'number', desc: 'Max seconds to poll (0.3s intervals)', opt: true, def: '10.0' },
+        ],
+        example: `-- Find and tap text on screen
+local ok, err = touch.tap_text("Submit")
+if not ok then sys.log("Error: " .. err) end
+
+-- Wait for text to appear
+local ok = touch.tap_text("Loading...", 30.0)
+if ok then sys.log("Tapped Loading!") end`
+      },
     ]
   },
   {
@@ -615,10 +646,11 @@ for _, p in ipairs(pts) do
 end`
       },
       {
-        name: 'find_text', sig: 'screen.find_text(target)', ret: 'x, y | nil',
-        desc: 'Find text on screen using OCR (Apple Vision). Case-insensitive partial match. Returns center coordinates of the matched text region, or nil if not found.',
+        name: 'find_text', sig: 'screen.find_text(target [, timeout])', ret: 'x, y | nil',
+        desc: 'Find text on screen using OCR (Apple Vision). Polls every 0.3s until found or timeout expires. Case-insensitive partial match. Returns center coordinates, or nil if not found.',
         params: [
           { name: 'target', type: 'string', desc: 'Text to search for' },
+          { name: 'timeout', type: 'number', desc: 'Max seconds to poll (0.3s intervals)', opt: true, def: '10.0' },
         ],
         example: `-- Find and tap "Settings" on screen
 local x, y = screen.find_text("Settings")
@@ -629,35 +661,28 @@ else
     sys.log("Text not found")
 end
 
--- Wait until text appears
-local x, y
-repeat
-    x, y = screen.find_text("Done")
-    sys.msleep(500)
-until x
-touch.tap(x, y)`
+-- Wait until text appears (up to 30s)
+local x, y = screen.find_text("Done", 30.0)
+if x then touch.tap(x, y) end`
       },
       {
-        name: 'find_image', sig: 'screen.find_image(path [, threshold])', ret: 'x, y | nil',
-        desc: 'Find a template image on screen using pixel-by-pixel template matching (SAD algorithm). Supports PNG and JPEG templates. Returns center coordinates of the best match, or nil if similarity is below threshold.',
+        name: 'find_image', sig: 'screen.find_image(path [, threshold [, timeout]])', ret: 'x, y | nil',
+        desc: 'Find a template image on screen using pixel-by-pixel template matching (SAD algorithm). Polls every 0.3s until found or timeout expires. Returns center coordinates, or nil if not found.',
         params: [
           { name: 'path', type: 'string', desc: 'Absolute path to template image file (PNG/JPEG)' },
           { name: 'threshold', type: 'number', desc: 'Match similarity threshold (0.0-1.0)', opt: true, def: '0.8' },
+          { name: 'timeout', type: 'number', desc: 'Max seconds to poll (0.3s intervals)', opt: true, def: '10.0' },
         ],
         example: `-- Find and tap a button screenshot
 local x, y = screen.find_image("/var/mobile/templates/buy_btn.png")
 if x then
     sys.log("Found button at: " .. x .. ", " .. y)
     touch.tap(x, y)
-else
-    sys.log("Button not found")
 end
 
--- Use stricter matching
-local x, y = screen.find_image("/var/mobile/templates/icon.png", 0.95)
-if x then
-    touch.tap(x, y)
-end`
+-- Wait for image with stricter matching
+local x, y = screen.find_image("/var/mobile/templates/icon.png", 0.95, 30.0)
+if x then touch.tap(x, y) end`
       },
     ]
   },
@@ -1000,7 +1025,7 @@ sys.log("Elapsed: " .. string.format("%.1f", elapsed) .. " ms")`
         name: 'read', sig: 'file.read(path)', ret: 'string | nil, string | nil',
         desc: 'Read entire file contents. Returns content string, or nil + error message on failure.',
         params: [{ name: 'path', type: 'string', desc: 'Full path to file' }],
-        example: `local content, err = file.read("/var/mobile/test.txt")
+        example: `local content, err = file.read("/var/mobile/Documents/scripts/test.txt")
 if not content then
     sys.log("Read error: " .. err)
 else
@@ -1014,7 +1039,7 @@ end`
           { name: 'path', type: 'string', desc: 'Full path to file' },
           { name: 'content', type: 'string', desc: 'Content to write' },
         ],
-        example: `local ok, err = file.write("/var/mobile/log.txt", "Hello World!")
+        example: `local ok, err = file.write("/var/mobile/Documents/scripts/log.txt", "Hello World!")
 if not ok then
     sys.log("Write error: " .. err)
 end`
@@ -1027,7 +1052,7 @@ end`
           { name: 'content', type: 'string', desc: 'Content to append' },
         ],
         example: `local entry = "Log entry at " .. sys.date() .. "\\n"
-local ok, err = file.append("/var/mobile/app.log", entry)
+local ok, err = file.append("/var/mobile/Documents/scripts/app.log", entry)
 if not ok then
     sys.log("Append error: " .. err)
 end`
@@ -1036,9 +1061,27 @@ end`
         name: 'clear', sig: 'file.clear(path)', ret: 'boolean | nil, string | nil',
         desc: 'Clear file contents (deletes and recreates as empty file). Returns true on success, or nil + error on failure.',
         params: [{ name: 'path', type: 'string', desc: 'Full path to file' }],
-        example: `local ok, err = file.clear("/var/mobile/app.log")
+        example: `local ok, err = file.clear("/var/mobile/Documents/scripts/app.log")
 if not ok then
     sys.log("Clear error: " .. err)
+end`
+      },
+      {
+        name: 'remove_first_line', sig: 'file.remove_first_line(path)', ret: 'boolean | nil, string | nil',
+        desc: 'Remove the first line from a file. Returns true on success, or nil + error on failure.',
+        params: [{ name: 'path', type: 'string', desc: 'Full path to file' }],
+        example: `local ok, err = file.remove_first_line("/var/mobile/Documents/scripts/log.txt")
+if not ok then
+    sys.log("Error: " .. err)
+end`
+      },
+      {
+        name: 'remove_last_line', sig: 'file.remove_last_line(path)', ret: 'boolean | nil, string | nil',
+        desc: 'Remove the last line from a file. Returns true on success, or nil + error on failure.',
+        params: [{ name: 'path', type: 'string', desc: 'Full path to file' }],
+        example: `local ok, err = file.remove_last_line("/var/mobile/Documents/scripts/log.txt")
+if not ok then
+    sys.log("Error: " .. err)
 end`
       },
     ]

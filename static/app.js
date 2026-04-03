@@ -173,7 +173,6 @@
     settings: "Settings",
     picker: "Color Picker",
     applist: "App List",
-    devcontrol: "Device Control",
     apidocs: "API Docs",
     tplmaker: "Template Maker",
   };
